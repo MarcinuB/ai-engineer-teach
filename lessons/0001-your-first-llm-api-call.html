@@ -1,0 +1,732 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 01 — Your First LLM API Call</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --border: #e5e5e3;
+    --text: #1a1a18;
+    --muted: #6b6b67;
+    --accent: #5b4cf5;
+    --accent-soft: #ede9fe;
+    --accent-hover: #4a3de0;
+    --green: #15803d;
+    --green-bg: #f0fdf4;
+    --green-border: #bbf7d0;
+    --red: #b91c1c;
+    --red-bg: #fef2f2;
+    --red-border: #fecaca;
+    --yellow-bg: #fffbeb;
+    --yellow-border: #fde68a;
+    --yellow-text: #92400e;
+    --code-bg: #1e1e2e;
+    --code-text: #cdd6f4;
+  }
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    font-size: 16px;
+    line-height: 1.7;
+    color: var(--text);
+    background: var(--bg);
+  }
+
+  /* LAYOUT */
+  .lesson-header {
+    background: var(--accent);
+    color: white;
+    padding: 3rem 2rem 2.5rem;
+  }
+  .lesson-header .meta {
+    font-size: 0.8rem;
+    opacity: 0.7;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 0.5rem;
+  }
+  .lesson-header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 1.2;
+  }
+  .lesson-header .subtitle {
+    opacity: 0.85;
+    margin-top: 0.5rem;
+    font-size: 1rem;
+  }
+  .lesson-header .tags {
+    display: flex;
+    gap: 0.5rem;
+    margin-top: 1.25rem;
+    flex-wrap: wrap;
+  }
+  .lesson-header .tag {
+    font-size: 0.75rem;
+    font-weight: 500;
+    background: rgba(255,255,255,0.2);
+    padding: 0.25rem 0.75rem;
+    border-radius: 99px;
+    border: 1px solid rgba(255,255,255,0.3);
+  }
+
+  .content {
+    max-width: 760px;
+    margin: 0 auto;
+    padding: 3rem 2rem 5rem;
+  }
+
+  /* PROGRESS */
+  .progress-bar {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 2.5rem;
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .progress-bar .step {
+    font-size: 0.75rem;
+    font-weight: 500;
+    padding: 0.25rem 0.75rem;
+    border-radius: 99px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    color: var(--muted);
+    white-space: nowrap;
+  }
+  .progress-bar .step.active {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+
+  /* SECTIONS */
+  h2 {
+    font-size: 1.4rem;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    margin-top: 3rem;
+    margin-bottom: 0.75rem;
+    color: var(--text);
+  }
+  h2 .step-num {
+    display: inline-block;
+    background: var(--accent-soft);
+    color: var(--accent);
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 0.15rem 0.55rem;
+    border-radius: 5px;
+    margin-right: 0.5rem;
+    vertical-align: middle;
+  }
+  h3 { font-size: 1rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+  p { margin-bottom: 1rem; }
+  ul, ol { margin: 0.75rem 0 1rem 1.5rem; }
+  li { margin-bottom: 0.4rem; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  strong { font-weight: 600; }
+
+  /* CALLOUTS */
+  .callout {
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    margin: 1.25rem 0;
+    font-size: 0.9rem;
+    border-left: 3px solid;
+  }
+  .callout.note   { background: var(--accent-soft); border-color: var(--accent); color: #3730a3; }
+  .callout.tip    { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+  .callout.warn   { background: var(--yellow-bg); border-color: #f59e0b; color: var(--yellow-text); }
+  .callout strong { display: block; margin-bottom: 0.25rem; }
+
+  /* CODE */
+  .code-block {
+    background: var(--code-bg);
+    border-radius: 8px;
+    margin: 1rem 0;
+    overflow: hidden;
+  }
+  .code-block .code-header {
+    padding: 0.5rem 1rem;
+    font-size: 0.75rem;
+    font-family: 'JetBrains Mono', monospace;
+    color: #6c7086;
+    border-bottom: 1px solid #313244;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .code-block pre {
+    padding: 1rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    line-height: 1.65;
+    color: var(--code-text);
+    overflow-x: auto;
+    margin: 0;
+    background: transparent;
+  }
+  .copy-btn {
+    font-size: 0.7rem;
+    padding: 0.2rem 0.6rem;
+    border-radius: 4px;
+    border: 1px solid #45475a;
+    background: #313244;
+    color: #cdd6f4;
+    cursor: pointer;
+    font-family: 'Inter', sans-serif;
+  }
+  .copy-btn:hover { background: #45475a; }
+
+  /* syntax highlight */
+  .c  { color: #6c7086; }
+  .k  { color: #cba6f7; }
+  .s  { color: #a6e3a1; }
+  .f  { color: #89b4fa; }
+  .n  { color: #fab387; }
+  .t  { color: #f38ba8; }
+  .v  { color: #f5c2e7; }
+
+  /* TERMINAL OUTPUT */
+  .terminal {
+    background: #0d0e11;
+    border-radius: 8px;
+    padding: 1rem;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    color: #a6e3a1;
+    line-height: 1.65;
+    margin: 1rem 0;
+  }
+  .terminal .prompt { color: #89b4fa; }
+  .terminal .out { color: #cdd6f4; }
+
+  /* QUIZ */
+  .quiz {
+    background: var(--surface);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    padding: 2rem;
+    margin-top: 3rem;
+  }
+  .quiz h2 {
+    margin-top: 0;
+    color: var(--accent);
+    font-size: 1.2rem;
+  }
+  .quiz-question {
+    margin-top: 1.75rem;
+  }
+  .quiz-question p {
+    font-weight: 600;
+    margin-bottom: 0.75rem;
+  }
+  .quiz-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 0.5rem;
+    cursor: pointer;
+    background: var(--bg);
+    transition: all 0.12s;
+    font-size: 0.9rem;
+  }
+  .quiz-option:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .quiz-option input[type="radio"] { margin-top: 0.15rem; accent-color: var(--accent); flex-shrink: 0; }
+  .quiz-option.correct { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+  .quiz-option.wrong   { background: var(--red-bg);   border-color: var(--red);   color: var(--red); }
+
+  .quiz-submit {
+    margin-top: 1.5rem;
+    background: var(--accent);
+    color: white;
+    border: none;
+    padding: 0.75rem 2rem;
+    border-radius: 8px;
+    font-family: 'Inter', sans-serif;
+    font-size: 0.9rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.12s;
+  }
+  .quiz-submit:hover { background: var(--accent-hover); }
+  .quiz-submit:disabled { opacity: 0.5; cursor: default; }
+
+  .quiz-result {
+    display: none;
+    margin-top: 1.25rem;
+    padding: 1rem 1.25rem;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  .quiz-result.pass { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+  .quiz-result.fail { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+
+  /* CHALLENGE */
+  .challenge {
+    background: var(--yellow-bg);
+    border: 1px solid var(--yellow-border);
+    border-radius: 10px;
+    padding: 1.5rem;
+    margin: 2rem 0;
+  }
+  .challenge h3 { color: var(--yellow-text); margin-top: 0; }
+  .challenge p  { color: var(--yellow-text); }
+
+  /* DIVIDER */
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+
+  /* FOOTER */
+  .lesson-footer {
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    padding: 2rem;
+    text-align: center;
+    font-size: 0.875rem;
+    color: var(--muted);
+    margin-top: 4rem;
+  }
+  .lesson-footer strong { color: var(--text); }
+  .lesson-footer .resources { margin-top: 1rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+  .lesson-footer .resources a { font-size: 0.8rem; }
+
+  @media (max-width: 600px) {
+    .lesson-header { padding: 2rem 1.25rem; }
+    .lesson-header h1 { font-size: 1.5rem; }
+    .content { padding: 2rem 1.25rem 4rem; }
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="lesson-header">
+  <div class="meta">AI Engineering · Lesson 01 · Stage 1: LLM App Basics</div>
+  <h1>Your First LLM API Call</h1>
+  <p class="subtitle">Go from zero to structured data extraction with Claude in ~30 minutes</p>
+  <div class="tags">
+    <span class="tag">Python</span>
+    <span class="tag">Anthropic SDK</span>
+    <span class="tag">Pydantic</span>
+    <span class="tag">Structured Output</span>
+  </div>
+</div>
+
+<div class="content">
+
+  <!-- PROGRESS -->
+  <div class="progress-bar">
+    <span class="step active">1 · Setup</span>
+    <span class="step active">2 · First call</span>
+    <span class="step active">3 · Structured output</span>
+    <span class="step">4 · Challenge</span>
+    <span class="step">5 · Quiz</span>
+  </div>
+
+  <!-- INTRO -->
+  <p>You've shipped production APIs, worked with HTTP and JSON for years, and understood systems at depth. What you need now is the <strong>AI engineering layer on top of that</strong> — specifically: how to call an LLM, and how to get reliable, typed data back from it.</p>
+
+  <p>By the end of this lesson you'll have a working Python script that sends messy text to Claude and gets back clean, validated JSON. That's <strong>Project 1</strong> from your roadmap — the structured output extractor.</p>
+
+  <div class="callout note">
+    <strong>What you'll build</strong>
+    A script that takes raw invoice text and extracts structured fields (vendor, amount, date) using Claude — validated with Pydantic so a bad model response raises an exception, not a silent bug.
+  </div>
+
+  <hr>
+
+  <!-- STEP 1 -->
+  <h2><span class="step-num">01</span> Project Setup</h2>
+
+  <p>Python's equivalent of <code>npm init</code> + <code>node_modules</code> is a <strong>virtual environment</strong> (venv). It isolates dependencies per project.</p>
+
+  <div class="code-block">
+    <div class="code-header">
+      terminal — run in your project directory
+      <button class="copy-btn" onclick="copyCode(this)">copy</button>
+    </div>
+    <pre><span class="prompt">$ </span>mkdir invoice-extractor && cd invoice-extractor
+<span class="prompt">$ </span>python -m venv .venv
+<span class="prompt">$ </span>source .venv/bin/activate   <span class="c"># Windows: .venv\Scripts\activate</span>
+<span class="prompt">(.venv) $ </span>pip install anthropic python-dotenv pydantic</pre>
+  </div>
+
+  <p>Now create a <code>.env</code> file for your API key. Get one free at <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a>.</p>
+
+  <div class="code-block">
+    <div class="code-header">.env</div>
+    <pre>ANTHROPIC_API_KEY=sk-ant-your-key-here</pre>
+  </div>
+
+  <div class="code-block">
+    <div class="code-header">.gitignore</div>
+    <pre>.env
+.venv/
+__pycache__/</pre>
+  </div>
+
+  <div class="callout warn">
+    <strong>Never commit your API key.</strong>
+    Add <code>.env</code> to <code>.gitignore</code> before the first commit. API keys exposed in git history get scraped by bots within minutes.
+  </div>
+
+  <hr>
+
+  <!-- STEP 2 -->
+  <h2><span class="step-num">02</span> Your First LLM API Call</h2>
+
+  <p>The Anthropic API follows the <strong>messages</strong> pattern: you send a list of messages (each with a role and content), and get a response back. It's a stateless HTTP call — identical semantics to any REST API you've called before.</p>
+
+  <p>Create <code>first_call.py</code>:</p>
+
+  <div class="code-block">
+    <div class="code-header">
+      first_call.py
+      <button class="copy-btn" onclick="copyCode(this)">copy</button>
+    </div>
+    <pre><span class="k">import</span> anthropic
+<span class="k">from</span> dotenv <span class="k">import</span> load_dotenv
+
+load_dotenv()  <span class="c"># loads .env file into environment variables</span>
+
+<span class="c"># Client reads ANTHROPIC_API_KEY from env automatically</span>
+client = anthropic.Anthropic()
+
+response = client.messages.create(
+    model=<span class="s">"claude-sonnet-4-6"</span>,
+    max_tokens=<span class="n">1024</span>,
+    messages=[
+        {<span class="s">"role"</span>: <span class="s">"user"</span>, <span class="s">"content"</span>: <span class="s">"What is a context window in LLMs?"</span>}
+    ]
+)
+
+<span class="c"># response.content is a list of content blocks</span>
+print(response.content[<span class="n">0</span>].text)
+
+<span class="c"># Always check your token usage</span>
+print(<span class="s">f"\nTokens used: {response.usage.input_tokens} in / {response.usage.output_tokens} out"</span>)</pre>
+  </div>
+
+  <div class="terminal">
+    <div><span class="prompt">(.venv) $ </span>python first_call.py</div>
+    <div class="out" style="margin-top:0.5rem">A context window in large language models refers to the maximum amount of text
+(measured in tokens) that the model can process in a single interaction...
+
+Tokens used: 18 in / 187 out</div>
+  </div>
+
+  <p>Notice the response object structure. <code>response.content</code> is a list because the API can return multiple content blocks (text, tool calls, images). For a simple text response, you always want <code>content[0].text</code>.</p>
+
+  <div class="callout note">
+    <strong>The <a href="../reference/ai-engineering-glossary.html#models" target="_blank">context window</a> is the total token budget for one API call</strong> — input tokens + output tokens combined. Claude Sonnet 4.6 has a 200k token input limit. <code>max_tokens</code> caps the output size specifically.
+  </div>
+
+  <hr>
+
+  <!-- STEP 3 -->
+  <h2><span class="step-num">03</span> Structured Output with Pydantic</h2>
+
+  <p>Free-form text responses are fine for chat. But production systems need <strong>reliable, typed data</strong>. You can't <code>json.parse()</code> a prose response.</p>
+
+  <p>The pattern:</p>
+  <ol>
+    <li>Define a <a href="https://docs.pydantic.dev/latest/" target="_blank">Pydantic</a> model describing the shape you want</li>
+    <li>Tell Claude in the system prompt to return only JSON matching that shape</li>
+    <li>Parse and validate the response with Pydantic — it raises a clean exception if the model returns bad data</li>
+  </ol>
+
+  <p>Create <code>extractor.py</code>:</p>
+
+  <div class="code-block">
+    <div class="code-header">
+      extractor.py
+      <button class="copy-btn" onclick="copyCode(this)">copy</button>
+    </div>
+    <pre><span class="k">import</span> json
+<span class="k">import</span> anthropic
+<span class="k">from</span> dotenv <span class="k">import</span> load_dotenv
+<span class="k">from</span> pydantic <span class="k">import</span> BaseModel, ValidationError
+<span class="k">from</span> typing <span class="k">import</span> Optional
+
+load_dotenv()
+client = anthropic.Anthropic()
+
+
+<span class="c"># 1. Define the exact shape you want back</span>
+<span class="k">class</span> <span class="f">Invoice</span>(BaseModel):
+    vendor: str
+    amount: float
+    date: str
+    description: Optional[str] = None
+
+
+<span class="c"># 2. Call Claude with a tight system prompt</span>
+<span class="k">def</span> <span class="f">extract_invoice</span>(raw_text: str) -> Invoice:
+    response = client.messages.create(
+        model=<span class="s">"claude-sonnet-4-6"</span>,
+        max_tokens=<span class="n">512</span>,
+        system=<span class="s">"""You are a data extraction engine.
+Extract invoice data from the user's text and return ONLY a JSON object.
+No prose, no explanation, no markdown code fences — just the raw JSON.
+Required fields: vendor (string), amount (float), date (string), description (string or null)."""</span>,
+        messages=[
+            {<span class="s">"role"</span>: <span class="s">"user"</span>, <span class="s">"content"</span>: raw_text}
+        ]
+    )
+
+    raw_json = response.content[<span class="n">0</span>].text
+
+    <span class="c"># 3. Parse JSON, then validate with Pydantic</span>
+    <span class="k">try</span>:
+        data = json.loads(raw_json)
+        <span class="k">return</span> Invoice(**data)
+    <span class="k">except</span> json.JSONDecodeError:
+        <span class="k">raise</span> ValueError(<span class="s">f"Model returned invalid JSON: {raw_json[:200]}"</span>)
+    <span class="k">except</span> ValidationError <span class="k">as</span> e:
+        <span class="k">raise</span> ValueError(<span class="s">f"Model returned wrong shape: {e}"</span>)
+
+
+<span class="c"># ---- Test it ----</span>
+sample_text = <span class="s">"""
+Invoice received from Acme Software Ltd, dated March 15, 2024.
+Please process payment of $3,750.00 for Q1 consulting services
+covering API integration and system architecture review.
+"""</span>
+
+invoice = extract_invoice(sample_text)
+
+print(<span class="s">f"Vendor:      {invoice.vendor}"</span>)
+print(<span class="s">f"Amount:      ${invoice.amount:,.2f}"</span>)
+print(<span class="s">f"Date:        {invoice.date}"</span>)
+print(<span class="s">f"Description: {invoice.description}"</span>)
+print()
+print(<span class="s">"As dict:"</span>, invoice.model_dump())</pre>
+  </div>
+
+  <div class="terminal">
+    <div><span class="prompt">(.venv) $ </span>python extractor.py</div>
+    <div class="out" style="margin-top:0.5rem">Vendor:      Acme Software Ltd
+Amount:      $3,750.00
+Date:        March 15, 2024
+Description: Q1 consulting services covering API integration and system architecture review
+
+As dict: {'vendor': 'Acme Software Ltd', 'amount': 3750.0, 'date': 'March 15, 2024', 'description': 'Q1 consulting services...'}</div>
+  </div>
+
+  <h3>Why Pydantic instead of just json.loads()?</h3>
+  <p><code>json.loads()</code> gives you a raw dict — you still don't know if <code>amount</code> is a float, a string, or missing. Pydantic enforces your schema at runtime: wrong type → coerce if possible, missing required field → raise immediately. This turns silent data bugs into loud exceptions.</p>
+
+  <div class="callout tip">
+    <strong>System prompts are standing orders.</strong>
+    "Return ONLY JSON" in the system prompt dramatically reduces the chance the model adds prose around your JSON. Still validate — models occasionally add markdown code fences (<code>```json ... ```</code>). Strip those before parsing if needed.
+  </div>
+
+  <hr>
+
+  <!-- CHALLENGE -->
+  <div class="challenge">
+    <h3>Challenge: Extend the Schema</h3>
+    <p>Modify <code>extractor.py</code> to also extract:</p>
+    <ul style="margin-top:0.5rem; color: var(--yellow-text);">
+      <li><code>line_items: list[str]</code> — list of individual service/product descriptions</li>
+      <li><code>currency: str</code> — 3-letter currency code (e.g. "USD", "EUR")</li>
+      <li><code>is_overdue: bool</code> — whether the invoice mentions being past due</li>
+    </ul>
+    <p style="margin-top:0.75rem">Test it with this input:</p>
+    <div class="code-block" style="margin-top:0.5rem">
+      <pre style="color:#fde68a; background:#1e1e2e; font-size:0.78rem">OVERDUE NOTICE — Invoice #INV-2024-089
+From: DataFlow Solutions (UK)
+Total: £12,400.00 GBP — PAYMENT 30 DAYS OVERDUE
+
+Items:
+- Cloud infrastructure audit: £4,500
+- Security penetration testing: £5,200
+- Remediation report and recommendations: £2,700</pre>
+    </div>
+    <p style="margin-top:0.75rem"><strong>Hint:</strong> You only need to change the <code>Invoice</code> class — the rest of the code is the same. Claude will figure out the new fields from the schema field names alone.</p>
+  </div>
+
+  <hr>
+
+  <!-- QUIZ -->
+  <div class="quiz" id="quiz">
+    <h2>Check Your Understanding</h2>
+    <p style="color:var(--muted); font-size:0.9rem; margin-top:0.25rem;">3 questions. Pick the best answer for each.</p>
+
+    <!-- Q1 -->
+    <div class="quiz-question" id="q1">
+      <p>1. What does <code>max_tokens=512</code> in the API call control?</p>
+      <label class="quiz-option">
+        <input type="radio" name="q1" value="a">
+        The maximum length of the input text you send
+      </label>
+      <label class="quiz-option">
+        <input type="radio" name="q1" value="b">
+        The maximum length of the model's response
+      </label>
+      <label class="quiz-option">
+        <input type="radio" name="q1" value="c">
+        The combined input + output token budget
+      </label>
+    </div>
+
+    <!-- Q2 -->
+    <div class="quiz-question" id="q2">
+      <p>2. Why do we use Pydantic's <code>BaseModel</code> instead of just <code>json.loads()</code>?</p>
+      <label class="quiz-option">
+        <input type="radio" name="q2" value="a">
+        Pydantic makes the LLM response faster
+      </label>
+      <label class="quiz-option">
+        <input type="radio" name="q2" value="b">
+        It validates that the parsed data matches your expected types and required fields, raising immediately on mismatch
+      </label>
+      <label class="quiz-option">
+        <input type="radio" name="q2" value="c">
+        The Anthropic SDK requires Pydantic to be installed
+      </label>
+    </div>
+
+    <!-- Q3 -->
+    <div class="quiz-question" id="q3">
+      <p>3. You ship an extractor to production. The model occasionally returns <code>{"vendor": "Acme", "amount": "3,750"}</code> — note <code>amount</code> is a string with a comma, not a float. What happens?</p>
+      <label class="quiz-option">
+        <input type="radio" name="q3" value="a">
+        <code>Invoice(**data)</code> raises a <code>ValidationError</code> because Pydantic can't coerce <code>"3,750"</code> to <code>float</code> — the bug is loud
+      </label>
+      <label class="quiz-option">
+        <input type="radio" name="q3" value="b">
+        Pydantic silently stores the string in the <code>amount</code> field — the bug is silent
+      </label>
+      <label class="quiz-option">
+        <input type="radio" name="q3" value="c">
+        The Anthropic SDK retries the call automatically
+      </label>
+    </div>
+
+    <button class="quiz-submit" onclick="submitQuiz()">Check answers</button>
+    <div class="quiz-result" id="quiz-result"></div>
+  </div>
+
+  <hr>
+
+  <!-- WHAT'S NEXT -->
+  <h2>What's Next</h2>
+  <p>You now have the foundation of Project 1 from your 90-day roadmap. The natural next steps:</p>
+  <ul>
+    <li><strong>Lesson 02:</strong> Add retry logic and error handling for production — right now one bad response crashes the script</li>
+    <li><strong>Lesson 03:</strong> Build a FastAPI endpoint around this extractor — accepts POST with raw text, returns JSON</li>
+    <li><strong>Lesson 04:</strong> Tool calling — let Claude decide when to call functions, not just extract data</li>
+  </ul>
+
+  <div class="callout tip">
+    <strong>Ask your teacher anything.</strong>
+    Return to your Claude Code session and ask follow-up questions. Confused about why <code>response.content</code> is a list? Want to understand how Pydantic coercion works? Want to see how streaming works? Just ask.
+  </div>
+
+</div>
+
+<!-- FOOTER -->
+<div class="lesson-footer">
+  <strong>References &amp; Further Reading</strong>
+  <div class="resources">
+    <a href="https://docs.anthropic.com/en/api/messages" target="_blank">Anthropic Messages API</a>
+    <a href="https://docs.pydantic.dev/latest/concepts/models/" target="_blank">Pydantic BaseModel docs</a>
+    <a href="https://console.anthropic.com" target="_blank">Anthropic Console (get API key)</a>
+    <a href="../reference/ai-engineering-glossary.html" target="_blank">AI Engineering Glossary</a>
+    <a href="../reference/python-llm-quickstart.html" target="_blank">Python + LLM Cheat Sheet</a>
+  </div>
+</div>
+
+<script>
+const ANSWERS = { q1: 'b', q2: 'b', q3: 'a' };
+
+const EXPLANATIONS = {
+  q1: {
+    b: null,
+    wrong: "max_tokens only caps the output (response) length. The context window covers input+output combined."
+  },
+  q2: {
+    b: null,
+    wrong: "json.loads() gives a raw dict with no type guarantees. Pydantic enforces your schema at runtime — the right answer is the validation behavior."
+  },
+  q3: {
+    a: null,
+    wrong: "Pydantic will try to coerce '3,750' → float, but the comma makes this fail → ValidationError. That's the desired behavior: a loud exception beats a silent string-as-float bug downstream."
+  }
+};
+
+function submitQuiz() {
+  let score = 0;
+  const qs = ['q1', 'q2', 'q3'];
+
+  qs.forEach(qid => {
+    const selected = document.querySelector(`input[name="${qid}"]:checked`);
+    const options = document.querySelectorAll(`#${qid} .quiz-option`);
+
+    options.forEach(opt => {
+      opt.classList.remove('correct', 'wrong');
+      opt.style.pointerEvents = 'none';
+    });
+
+    if (selected) {
+      const parentLabel = selected.closest('.quiz-option');
+      if (selected.value === ANSWERS[qid]) {
+        parentLabel.classList.add('correct');
+        score++;
+      } else {
+        parentLabel.classList.add('wrong');
+        // highlight correct
+        options.forEach(opt => {
+          if (opt.querySelector('input').value === ANSWERS[qid]) {
+            opt.classList.add('correct');
+          }
+        });
+      }
+    }
+  });
+
+  const resultEl = document.getElementById('quiz-result');
+  resultEl.style.display = 'block';
+
+  if (score === 3) {
+    resultEl.className = 'quiz-result pass';
+    resultEl.textContent = '3/3 — Perfect. You understand the core loop: call → parse → validate. On to Lesson 02.';
+  } else if (score === 2) {
+    resultEl.className = 'quiz-result pass';
+    resultEl.textContent = `2/3 — Good. Review the highlighted answer above, then move on.`;
+  } else {
+    resultEl.className = 'quiz-result fail';
+    resultEl.textContent = `${score}/3 — Re-read Step 3 and the Pydantic docs link in the footer, then retry.`;
+  }
+
+  document.querySelector('.quiz-submit').disabled = true;
+}
+
+function copyCode(btn) {
+  const pre = btn.closest('.code-block').querySelector('pre');
+  const text = pre.innerText;
+  navigator.clipboard.writeText(text).then(() => {
+    btn.textContent = 'copied!';
+    setTimeout(() => btn.textContent = 'copy', 1500);
+  });
+}
+</script>
+</body>
+</html>

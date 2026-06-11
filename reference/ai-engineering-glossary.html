@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Engineering Glossary</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --border: #e5e5e3;
+    --text: #1a1a18;
+    --text-muted: #6b6b67;
+    --accent: #5b4cf5;
+    --accent-soft: #ede9fe;
+    --tag-llm: #dbeafe;
+    --tag-llm-text: #1e40af;
+    --tag-infra: #dcfce7;
+    --tag-infra-text: #166534;
+    --tag-eval: #fef3c7;
+    --tag-eval-text: #92400e;
+    --tag-data: #fce7f3;
+    --tag-data-text: #9d174d;
+    --code-bg: #1e1e2e;
+    --code-text: #cdd6f4;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--text);
+    background: var(--bg);
+    padding: 2rem;
+  }
+
+  .page {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+
+  header {
+    margin-bottom: 3rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid var(--border);
+  }
+
+  header h1 {
+    font-size: 2rem;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    color: var(--text);
+  }
+
+  header p {
+    color: var(--text-muted);
+    margin-top: 0.4rem;
+    font-size: 0.9rem;
+  }
+
+  .category-nav {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+    margin-bottom: 2.5rem;
+  }
+
+  .category-nav a {
+    font-size: 0.8rem;
+    font-weight: 500;
+    padding: 0.3rem 0.75rem;
+    border-radius: 99px;
+    text-decoration: none;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    transition: all 0.15s;
+  }
+
+  .category-nav a:hover {
+    background: var(--accent);
+    color: white;
+    border-color: var(--accent);
+  }
+
+  .section {
+    margin-bottom: 3rem;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .section-header h2 {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+  }
+
+  .terms {
+    display: grid;
+    gap: 0.75rem;
+  }
+
+  .term {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 1rem;
+    align-items: start;
+  }
+
+  .term-name {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--accent);
+    line-height: 1.4;
+  }
+
+  .term-abbrev {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 400;
+    color: var(--text-muted);
+    margin-top: 0.1rem;
+  }
+
+  .term-body {}
+
+  .term-def {
+    font-size: 0.9rem;
+    color: var(--text);
+    line-height: 1.6;
+  }
+
+  .term-note {
+    margin-top: 0.4rem;
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-style: italic;
+  }
+
+  .term-example {
+    margin-top: 0.5rem;
+    background: var(--code-bg);
+    color: var(--code-text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: 5px;
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  .tag {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 500;
+    padding: 0.15rem 0.5rem;
+    border-radius: 99px;
+    margin-top: 0.4rem;
+  }
+
+  .tag-llm    { background: var(--tag-llm);  color: var(--tag-llm-text); }
+  .tag-infra  { background: var(--tag-infra); color: var(--tag-infra-text); }
+  .tag-eval   { background: var(--tag-eval);  color: var(--tag-eval-text); }
+  .tag-data   { background: var(--tag-data);  color: var(--tag-data-text); }
+
+  @media (max-width: 600px) {
+    .term { grid-template-columns: 1fr; }
+    body { padding: 1rem; }
+  }
+
+  @media print {
+    body { background: white; padding: 0; }
+    .category-nav { display: none; }
+    .term { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <h1>AI Engineering Glossary</h1>
+    <p>Core vocabulary for building LLM-powered systems in production &mdash; updated 2026</p>
+  </header>
+
+  <nav class="category-nav">
+    <a href="#models">Models &amp; Inference</a>
+    <a href="#prompting">Prompting</a>
+    <a href="#data">Data &amp; Retrieval</a>
+    <a href="#agents">Agents &amp; Workflows</a>
+    <a href="#production">Production &amp; Ops</a>
+  </nav>
+
+  <!-- MODELS & INFERENCE -->
+  <section class="section" id="models">
+    <div class="section-header"><h2>Models &amp; Inference</h2></div>
+    <div class="terms">
+
+      <div class="term">
+        <div class="term-name">LLM<span class="term-abbrev">Large Language Model</span></div>
+        <div class="term-body">
+          <p class="term-def">A neural network trained on massive text datasets that can generate, summarize, classify, and transform text. As an AI engineer you treat it as a black-box API — you send tokens in, tokens come back.</p>
+          <p class="term-note">Examples: Claude (Anthropic), GPT-4 (OpenAI), Gemini (Google), Llama (Meta). You rarely choose one for capability alone — cost, latency, and context window size drive the decision.</p>
+          <span class="tag tag-llm">LLM</span>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="term-name">Token</div>
+        <div class="term-body">
+          <p class="term-def">The atomic unit an LLM processes. Roughly 0.75 English words, or 4 characters. Models don't see words or characters — they see tokens.</p>
+          <p class="term-note">Why it matters: you pay per token and hit limits per token. "1M token context" ≈ 750,000 words ≈ a small novel.</p>
+          <div class="term-example">"Hello, world!" → ["Hello", ",", " world", "!"]  # 4 tokens</div>
+          <span class="tag tag-llm">LLM</span>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="term-name">Context Window</div>
+        <div class="term-body">
+          <p class="term-def">The maximum number of tokens an LLM can process in a single call — input + output combined. If you exceed it, the call fails.</p>
+          <p class="term-note">Claude Sonnet 4.6: 200k tokens input, 8k output. GPT-4o: 128k. Larger windows cost more per call. RAG exists partly to work around this limit.</p>
+          <span class="tag tag-llm">LLM</span>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="term-name">Model Tier</div>
+        <div class="term-body">
+          <p class="term-def">Providers offer models at different capability/cost/speed tiers. Choose by matching task complexity to tier, not by always picking the best model.</p>
+          <p class="term-note">Anthropic tiers (2026): Haiku (fast/cheap) → Sonnet (balanced) → Opus (most capable). Route simple classification to Haiku, complex reasoning to Sonnet/Opus.</p>
+          <span class="tag tag-llm">LLM</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- PROMPTING -->
+  <section class="section" id="prompting">
+    <div class="section-header"><h2>Prompting</h2></div>
+    <div class="terms">
+
+      <div class="term">
+        <div class="term-name">System Prompt</div>
+        <div class="term-body">
+          <p class="term-def">Instructions sent before the conversation that set the model's role, output format, and behavioral constraints. The model treats these as standing orders.</p>
+          <div class="term-example">system="You are an invoice parser. Return only valid JSON. Never add commentary."</div>
+          <span class="tag tag-llm">LLM</span>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="term-name">Structured Output</div>
+        <div class="term-body">
+          <p class="term-def">Getting an LLM to return data in a predictable schema (usually JSON) instead of free-form text. Essential for any production system that needs to parse the response.</p>
+          <p class="term-note">Enforce this with Pydantic validation on the receiving end. Never trust unvalidated LLM JSON in production.</p>
+          <div class="term-example">{"vendor": "Acme", "amount": 1250.00, "date": "2024-03-15"}</div>
+          <span class="tag tag-llm">LLM</span>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="term-name">Temperature</div>
+        <div class="term-body">
+          <p class="term-def">A sampling parameter (0.0–1.0) controlling output randomness. Lower = more deterministic, higher = more creative/varied.</p>
+          <p class="term-note">For extraction and classification tasks: use 0. For creative tasks: 0.7–1.0. Default (unset) is usually around 1.0.</p>
+          <span class="tag tag-llm">LLM</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- DATA & RETRIEVAL -->
+  <section class="section" id="data">
+    <div class="section-header"><h2>Data &amp; Retrieval</h2></div>
+    <div class="terms">
+
+      <div class="term">
+        <div class="term-name">Embedding</div>
+        <div class="term-body">
+          <p class="term-def">A fixed-size numeric vector (e.g. 1536 floats) that represents the semantic meaning of a piece of text. Texts with similar meaning have similar vectors (high cosine similarity).</p>
+          <p class="term-note">You don't read embeddings directly — you compare them mathematically. Generated by embedding models, not chat models.</p>
+          <span class="tag tag-data">Data</span>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="term-name">Vector Database</div>
+        <div class="term-body">
+          <p class="term-def">A database optimized for storing embeddings and finding the most similar ones to a query vector (approximate nearest-neighbor search).</p>
+          <p class="term-note">Options: pgvector (Postgres extension, simplest for existing Postgres users), Pinecone (managed), Chroma (local dev). Start with pgvector unless you have a reason not to.</p>
+          <span class="tag tag-data">Data</span>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="term-name">Chunking</div>
+        <div class="term-body">
+          <p class="term-def">Splitting source documents into smaller pieces before embedding, since embedding models have input limits and smaller chunks retrieve more precisely.</p>
+          <p class="term-note">Chunk size is a hyperparameter. Typical: 500–1000 tokens with 100-token overlap. Too small = loss of context. Too large = imprecise retrieval.</p>
+          <span class="tag tag-data">Data</span>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="term-name">RAG<span class="term-abbrev">Retrieval-Augmented Generation</span></div>
+        <div class="term-body">
+          <p class="term-def">Pattern where relevant documents are retrieved from a database and injected into the prompt before calling the LLM. Lets the model answer questions about data it wasn't trained on.</p>
+          <div class="term-example">query → embed query → find similar chunks → inject into prompt → LLM answers with citations</div>
+          <span class="tag tag-data">Data</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- AGENTS & WORKFLOWS -->
+  <section class="section" id="agents">
+    <div class="section-header"><h2>Agents &amp; Workflows</h2></div>
+    <div class="terms">
+
+      <div class="term">
+        <div class="term-name">Tool Calling<span class="term-abbrev">Function Calling</span></div>
+        <div class="term-body">
+          <p class="term-def">Capability where you declare functions (tools) the LLM can invoke. The model returns a structured tool call request; your code executes it and feeds results back.</p>
+          <p class="term-note">The model doesn't execute code — it requests execution. Your application is in control.</p>
+          <div class="term-example">tools=[{"name": "get_weather", "input_schema": {"city": "string"}}]
+# Model returns: {"name": "get_weather", "input": {"city": "Paris"}}</div>
+          <span class="tag tag-llm">LLM</span>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="term-name">Agent</div>
+        <div class="term-body">
+          <p class="term-def">An LLM system that uses tool calling in a loop: the model decides what action to take, your code executes it, the result feeds back to the model — repeat until done.</p>
+          <p class="term-note">Most production "agents" are bounded state machines, not fully autonomous. Unbounded agents are unreliable. Add human approval gates for consequential actions.</p>
+          <span class="tag tag-llm">LLM</span>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="term-name">State Machine</div>
+        <div class="term-body">
+          <p class="term-def">A workflow where the LLM system progresses through explicit states with defined transitions. More predictable and debuggable than open-ended agents.</p>
+          <p class="term-note">LangGraph implements this pattern. Prefer state machines over open loops when reliability matters.</p>
+          <span class="tag tag-infra">Infra</span>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="term-name">Guardrails</div>
+        <div class="term-body">
+          <p class="term-def">Checks on LLM inputs and outputs that catch harmful, off-topic, or malformed responses before they reach the user or downstream systems.</p>
+          <p class="term-note">Can be rule-based (regex, blocklists) or model-based (a second LLM call to evaluate the first). Model-based guardrails add latency and cost.</p>
+          <span class="tag tag-infra">Infra</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- PRODUCTION & OPS -->
+  <section class="section" id="production">
+    <div class="section-header"><h2>Production &amp; Ops</h2></div>
+    <div class="terms">
+
+      <div class="term">
+        <div class="term-name">Observability</div>
+        <div class="term-body">
+          <p class="term-def">Logging, tracing, and monitoring of LLM calls in production. Captures: inputs, outputs, latency, token count, cost, errors, and model version per request.</p>
+          <p class="term-note">Tools: LangSmith, Helicone, Braintrust. Blind spots kill production LLM systems — you can't tune what you can't see.</p>
+          <span class="tag tag-infra">Infra</span>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="term-name">Evaluation<span class="term-abbrev">Evals</span></div>
+        <div class="term-body">
+          <p class="term-def">Systematic measurement of LLM output quality. Methods: human review, rule-based checks (regex, exact match), model-based (LLM-as-judge scoring a response).</p>
+          <p class="term-note">Ship evals before shipping features. "Does this work?" is a question evals answer at scale, not vibes.</p>
+          <span class="tag tag-eval">Eval</span>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="term-name">LLM-as-Judge</div>
+        <div class="term-body">
+          <p class="term-def">Using a capable LLM to score or classify outputs from another LLM call. The judge scores responses on a rubric (1–5, pass/fail, etc.).</p>
+          <p class="term-note">Surprisingly effective. Bias exists (models prefer their own outputs) — use a different model as judge than the one being evaluated.</p>
+          <span class="tag tag-eval">Eval</span>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="term-name">Latency</div>
+        <div class="term-body">
+          <p class="term-def">Time from sending an API request to receiving the complete response. For user-facing features, target &lt;2s for most interactions; streaming hides latency.</p>
+          <p class="term-note">Main knobs: model tier (smaller = faster), max_tokens (cap output size), streaming (start showing output immediately).</p>
+          <span class="tag tag-infra">Infra</span>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="term-name">Cost-per-Run</div>
+        <div class="term-body">
+          <p class="term-def">Total token cost of executing one workflow: (input tokens × input price) + (output tokens × output price). Track this metric per workflow from day one.</p>
+          <p class="term-note">A workflow that costs $0.02 at 100 runs/day costs $730/year. At 10k runs/day: $73,000/year. Know your numbers before you scale.</p>
+          <span class="tag tag-infra">Infra</span>
+        </div>
+      </div>
+
+      <div class="term">
+        <div class="term-name">Idempotency</div>
+        <div class="term-body">
+          <p class="term-def">Designing operations so that running them multiple times produces the same result as running once. Critical for LLM pipelines with retries.</p>
+          <p class="term-note">Use idempotency keys on API calls. Cache LLM responses where input is identical. Avoid double-processing in queue workers.</p>
+          <span class="tag tag-infra">Infra</span>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+</div>
+</body>
+</html>
