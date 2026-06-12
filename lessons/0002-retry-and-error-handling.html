@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 02 — Retry &amp; Error Handling</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --border: #e5e5e3;
+    --text: #1a1a18;
+    --muted: #6b6b67;
+    --accent: #5b4cf5;
+    --accent-soft: #ede9fe;
+    --accent-hover: #4a3de0;
+    --green: #15803d;
+    --green-bg: #f0fdf4;
+    --green-border: #bbf7d0;
+    --red: #b91c1c;
+    --red-bg: #fef2f2;
+    --red-border: #fecaca;
+    --yellow-bg: #fffbeb;
+    --yellow-border: #fde68a;
+    --yellow-text: #92400e;
+    --code-bg: #1e1e2e;
+    --code-text: #cdd6f4;
+  }
+  body { font-family: 'Inter', sans-serif; font-size: 16px; line-height: 1.7; color: var(--text); background: var(--bg); }
+
+  .lesson-header { background: #0f172a; color: white; padding: 3rem 2rem 2.5rem; }
+  .lesson-header .meta { font-size: 0.8rem; opacity: 0.5; text-transform: uppercase; letter-spacing: 0.1em; margin-bottom: 0.5rem; }
+  .lesson-header h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.03em; line-height: 1.2; }
+  .lesson-header .subtitle { opacity: 0.75; margin-top: 0.5rem; font-size: 1rem; }
+  .lesson-header .tags { display: flex; gap: 0.5rem; margin-top: 1.25rem; flex-wrap: wrap; }
+  .lesson-header .tag { font-size: 0.75rem; font-weight: 500; background: rgba(255,255,255,0.1); padding: 0.25rem 0.75rem; border-radius: 99px; border: 1px solid rgba(255,255,255,0.2); }
+
+  .content { max-width: 760px; margin: 0 auto; padding: 3rem 2rem 5rem; }
+
+  .progress-bar { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 1rem 1.25rem; margin-bottom: 2.5rem; display: flex; gap: 0.5rem; flex-wrap: wrap; }
+  .step { font-size: 0.75rem; font-weight: 500; padding: 0.25rem 0.75rem; border-radius: 99px; background: var(--bg); border: 1px solid var(--border); color: var(--muted); white-space: nowrap; }
+  .step.active { background: #0f172a; color: white; border-color: #0f172a; }
+
+  h2 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; margin-top: 3rem; margin-bottom: 0.75rem; }
+  h2 .step-num { display: inline-block; background: #f1f5f9; color: #0f172a; font-size: 0.8rem; font-weight: 700; padding: 0.15rem 0.55rem; border-radius: 5px; margin-right: 0.5rem; vertical-align: middle; }
+  h3 { font-size: 1rem; font-weight: 600; margin-top: 1.5rem; margin-bottom: 0.5rem; }
+  p { margin-bottom: 1rem; }
+  ul, ol { margin: 0.75rem 0 1rem 1.5rem; }
+  li { margin-bottom: 0.4rem; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  strong { font-weight: 600; }
+  code { font-family: 'JetBrains Mono', monospace; font-size: 0.85em; background: #f1f5f9; padding: 0.1em 0.35em; border-radius: 3px; }
+
+  .callout { border-radius: 8px; padding: 1rem 1.25rem; margin: 1.25rem 0; font-size: 0.9rem; border-left: 3px solid; }
+  .callout.note  { background: var(--accent-soft); border-color: var(--accent); color: #3730a3; }
+  .callout.tip   { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+  .callout.warn  { background: var(--yellow-bg); border-color: #f59e0b; color: var(--yellow-text); }
+  .callout.danger { background: var(--red-bg); border-color: var(--red); color: var(--red); }
+  .callout strong { display: block; margin-bottom: 0.25rem; }
+
+  .code-block { background: var(--code-bg); border-radius: 8px; margin: 1rem 0; overflow: hidden; }
+  .code-header { padding: 0.5rem 1rem; font-size: 0.75rem; font-family: 'JetBrains Mono', monospace; color: #6c7086; border-bottom: 1px solid #313244; display: flex; align-items: center; justify-content: space-between; }
+  pre { padding: 1rem; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; line-height: 1.65; color: var(--code-text); overflow-x: auto; margin: 0; background: transparent; }
+  .copy-btn { font-size: 0.7rem; padding: 0.2rem 0.6rem; border-radius: 4px; border: 1px solid #45475a; background: #313244; color: #cdd6f4; cursor: pointer; font-family: 'Inter', sans-serif; }
+  .copy-btn:hover { background: #45475a; }
+
+  .c { color: #6c7086; }
+  .k { color: #cba6f7; }
+  .s { color: #a6e3a1; }
+  .f { color: #89b4fa; }
+  .n { color: #fab387; }
+  .t { color: #f38ba8; }
+
+  .terminal { background: #0d0e11; border-radius: 8px; padding: 1rem; font-family: 'JetBrains Mono', monospace; font-size: 0.82rem; line-height: 1.65; margin: 1rem 0; }
+  .terminal .prompt { color: #89b4fa; }
+  .terminal .out { color: #cdd6f4; }
+  .terminal .err { color: #f38ba8; }
+  .terminal .ok  { color: #a6e3a1; }
+
+  /* failure map */
+  .failure-table { width: 100%; border-collapse: collapse; font-size: 0.875rem; margin: 1rem 0; }
+  .failure-table th { background: #f8fafc; padding: 0.6rem 0.75rem; text-align: left; font-weight: 600; border: 1px solid var(--border); font-size: 0.8rem; color: var(--muted); text-transform: uppercase; letter-spacing: 0.05em; }
+  .failure-table td { padding: 0.6rem 0.75rem; border: 1px solid var(--border); vertical-align: top; }
+  .failure-table tr:nth-child(even) td { background: #fafafa; }
+  .badge { display: inline-block; font-size: 0.7rem; font-weight: 600; padding: 0.1rem 0.45rem; border-radius: 4px; font-family: 'JetBrains Mono', monospace; }
+  .badge-red  { background: var(--red-bg); color: var(--red); }
+  .badge-yellow { background: var(--yellow-bg); color: var(--yellow-text); }
+  .badge-green { background: var(--green-bg); color: var(--green); }
+
+  .challenge { background: var(--yellow-bg); border: 1px solid var(--yellow-border); border-radius: 10px; padding: 1.5rem; margin: 2rem 0; }
+  .challenge h3 { color: var(--yellow-text); margin-top: 0; }
+
+  .quiz { background: var(--surface); border: 2px solid var(--border); border-radius: 12px; padding: 2rem; margin-top: 3rem; }
+  .quiz h2 { margin-top: 0; color: #0f172a; font-size: 1.2rem; }
+  .quiz-question { margin-top: 1.75rem; }
+  .quiz-question p { font-weight: 600; margin-bottom: 0.75rem; }
+  .quiz-option { display: flex; align-items: flex-start; gap: 0.75rem; padding: 0.75rem 1rem; border: 1px solid var(--border); border-radius: 8px; margin-bottom: 0.5rem; cursor: pointer; background: var(--bg); transition: all 0.12s; font-size: 0.9rem; }
+  .quiz-option:hover { border-color: var(--accent); background: var(--accent-soft); }
+  .quiz-option input[type="radio"] { margin-top: 0.15rem; accent-color: var(--accent); flex-shrink: 0; }
+  .quiz-option.correct { background: var(--green-bg); border-color: var(--green); color: var(--green); }
+  .quiz-option.wrong   { background: var(--red-bg);   border-color: var(--red);   color: var(--red); }
+  .quiz-submit { margin-top: 1.5rem; background: #0f172a; color: white; border: none; padding: 0.75rem 2rem; border-radius: 8px; font-family: 'Inter', sans-serif; font-size: 0.9rem; font-weight: 600; cursor: pointer; }
+  .quiz-submit:hover { background: #1e293b; }
+  .quiz-submit:disabled { opacity: 0.5; cursor: default; }
+  .quiz-result { display: none; margin-top: 1.25rem; padding: 1rem 1.25rem; border-radius: 8px; font-weight: 600; font-size: 0.95rem; }
+  .quiz-result.pass { background: var(--green-bg); color: var(--green); border: 1px solid var(--green-border); }
+  .quiz-result.fail { background: var(--red-bg); color: var(--red); border: 1px solid var(--red-border); }
+
+  hr { border: none; border-top: 1px solid var(--border); margin: 2.5rem 0; }
+
+  .lesson-footer { background: var(--surface); border-top: 1px solid var(--border); padding: 2rem; text-align: center; font-size: 0.875rem; color: var(--muted); margin-top: 4rem; }
+  .lesson-footer strong { color: var(--text); }
+  .lesson-footer .resources { margin-top: 1rem; display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+  .lesson-footer .resources a { font-size: 0.8rem; }
+
+  @media (max-width: 600px) { .lesson-header, .content { padding-left: 1.25rem; padding-right: 1.25rem; } .lesson-header h1 { font-size: 1.5rem; } }
+</style>
+</head>
+<body>
+
+<div class="lesson-header">
+  <div class="meta">AI Engineering · Lesson 02 · Stage 1: Production Basics</div>
+  <h1>Retry &amp; Error Handling</h1>
+  <p class="subtitle">Make your LLM calls survive the real world — rate limits, bad JSON, and model quirks</p>
+  <div class="tags">
+    <span class="tag">Python</span>
+    <span class="tag">Error Handling</span>
+    <span class="tag">Retry Logic</span>
+    <span class="tag">Exponential Backoff</span>
+  </div>
+</div>
+
+<div class="content">
+
+  <div class="progress-bar">
+    <span class="step active">1 · What breaks</span>
+    <span class="step active">2 · HTTP errors</span>
+    <span class="step active">3 · JSON fences</span>
+    <span class="step active">4 · LLM self-correction</span>
+    <span class="step">5 · Final extractor</span>
+    <span class="step">6 · Quiz</span>
+  </div>
+
+  <p>Your extractor from Lesson 01 works — in a happy-path test. In production, you'll face rate limits, transient server errors, and a model that occasionally wraps its JSON in markdown. None of these are bugs in your code. They're <strong>expected failure modes</strong> you need to handle explicitly.</p>
+
+  <p>By the end of this lesson, your extractor will handle all of them gracefully.</p>
+
+  <hr>
+
+  <!-- STEP 1: WHAT BREAKS -->
+  <h2><span class="step-num">01</span> A Map of What Can Go Wrong</h2>
+
+  <p>LLM API calls have failure modes at two layers: <strong>HTTP/network</strong> (standard API failures) and <strong>LLM output</strong> (the model misbehaved). You handle them differently.</p>
+
+  <table class="failure-table">
+    <thead>
+      <tr><th>Failure</th><th>Layer</th><th>Cause</th><th>Fix</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><span class="badge badge-red">429</span> Rate limit</td>
+        <td>HTTP</td>
+        <td>Too many requests per minute</td>
+        <td>Exponential backoff + retry</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-red">529</span> Overloaded</td>
+        <td>HTTP</td>
+        <td>Provider under heavy load</td>
+        <td>Backoff + retry</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-red">5xx</span> Server error</td>
+        <td>HTTP</td>
+        <td>Transient provider failure</td>
+        <td>Backoff + retry (max 3x)</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-yellow">4xx</span> Client error</td>
+        <td>HTTP</td>
+        <td>Bad request (wrong model name, exceeded context)</td>
+        <td>Fix your code — do <em>not</em> retry</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-yellow">JSON fence</span></td>
+        <td>LLM output</td>
+        <td>Model adds <code>```json … ```</code> around output</td>
+        <td>Strip with regex before parsing</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-yellow">Invalid JSON</span></td>
+        <td>LLM output</td>
+        <td>Model truncated (hit max_tokens) or hallucinated syntax</td>
+        <td>Send correction message + retry call</td>
+      </tr>
+      <tr>
+        <td><span class="badge badge-yellow">Wrong schema</span></td>
+        <td>LLM output</td>
+        <td>Missing field, wrong type (e.g. amount as string)</td>
+        <td>Pydantic catches it → send correction + retry</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="callout note">
+    <strong>The golden rule</strong>
+    Retry on 429, 529, 5xx, and bad LLM output. <em>Never</em> retry on 4xx — those mean your request is wrong, not the server. Retrying a 400 just hammers the API with the same broken request.
+  </div>
+
+  <hr>
+
+  <!-- STEP 2: HTTP ERRORS -->
+  <h2><span class="step-num">02</span> Handling HTTP Errors with Backoff</h2>
+
+  <p>The Anthropic SDK raises typed exceptions — you don't parse status codes yourself. The key ones:</p>
+
+  <div class="code-block">
+    <div class="code-header">exception types (Anthropic SDK)</div>
+    <pre>anthropic.RateLimitError      <span class="c"># 429 — back off and retry</span>
+anthropic.APIStatusError      <span class="c"># all other HTTP errors — check .status_code</span>
+anthropic.APIConnectionError  <span class="c"># network failure — retry</span></pre>
+  </div>
+
+  <p>Wrap your API call in a retry loop with <strong>exponential backoff</strong> — wait 1s after the first failure, 2s after the second, 4s after the third. This prevents hammering the API while it recovers.</p>
+
+  <div class="code-block">
+    <div class="code-header">
+      retry.py — HTTP-level retry helper
+      <button class="copy-btn" onclick="copyCode(this)">copy</button>
+    </div>
+    <pre><span class="k">import</span> time
+<span class="k">import</span> anthropic
+
+<span class="k">def</span> <span class="f">create_with_retry</span>(client: anthropic.Anthropic, max_retries: <span class="t">int</span> = <span class="n">3</span>, **kwargs):
+    <span class="s">"""Drop-in wrapper around client.messages.create with retry logic."""</span>
+    <span class="k">for</span> attempt <span class="k">in</span> range(max_retries):
+        <span class="k">try</span>:
+            <span class="k">return</span> client.messages.create(**kwargs)
+
+        <span class="k">except</span> (anthropic.RateLimitError, anthropic.APIConnectionError) <span class="k">as</span> e:
+            <span class="k">if</span> attempt == max_retries - <span class="n">1</span>:
+                <span class="k">raise</span>
+            wait = <span class="n">2</span> ** attempt          <span class="c"># 1s, 2s, 4s</span>
+            print(<span class="s">f"[retry] {type(e).__name__}, waiting {wait}s (attempt {attempt+1}/{max_retries})"</span>)
+            time.sleep(wait)
+
+        <span class="k">except</span> anthropic.APIStatusError <span class="k">as</span> e:
+            <span class="k">if</span> e.status_code < <span class="n">500</span>:
+                <span class="k">raise</span>                       <span class="c"># 4xx → your fault, don't retry</span>
+            <span class="k">if</span> attempt == max_retries - <span class="n">1</span>:
+                <span class="k">raise</span>
+            wait = <span class="n">2</span> ** attempt
+            print(<span class="s">f"[retry] {e.status_code} server error, waiting {wait}s"</span>)
+            time.sleep(wait)</pre>
+  </div>
+
+  <div class="callout tip">
+    <strong>Why <code>**kwargs</code>?</strong>
+    It forwards any keyword arguments through unchanged — so <code>create_with_retry(client, model=..., messages=...)</code> works identically to <code>client.messages.create(model=..., messages=...)</code>. This is a common Python pattern for transparent wrappers.
+  </div>
+
+  <hr>
+
+  <!-- STEP 3: JSON FENCES -->
+  <h2><span class="step-num">03</span> Stripping Markdown Fences</h2>
+
+  <p>Even with "return ONLY JSON" in your system prompt, Claude occasionally returns:</p>
+
+  <div class="code-block">
+    <div class="code-header">what the model sometimes returns</div>
+    <pre>```json
+{"vendor": "Acme", "amount": 3750.0, "date": null}
+```</pre>
+  </div>
+
+  <p>That's valid JSON wrapped in a markdown code fence — <code>json.loads()</code> will fail on it. Strip the fence with a simple regex before parsing:</p>
+
+  <div class="code-block">
+    <div class="code-header">
+      json_utils.py
+      <button class="copy-btn" onclick="copyCode(this)">copy</button>
+    </div>
+    <pre><span class="k">import</span> re
+
+<span class="k">def</span> <span class="f">strip_json_fence</span>(text: str) -> str:
+    <span class="s">"""Remove ```json ... ``` or ``` ... ``` wrappers if present."""</span>
+    text = text.strip()
+    <span class="c"># Match optional language tag: ```json or just ```</span>
+    match = re.search(<span class="s">r'```(?:json)?\s*([\s\S]*?)```'</span>, text)
+    <span class="k">if</span> match:
+        <span class="k">return</span> match.group(<span class="n">1</span>).strip()
+    <span class="k">return</span> text</pre>
+  </div>
+
+  <div class="terminal">
+    <div class="ok">>>> strip_json_fence('```json\n{"vendor": "Acme"}\n```')</div>
+    <div class="out">'{"vendor": "Acme"}'</div>
+    <div class="ok" style="margin-top:0.4rem">>>> strip_json_fence('{"vendor": "Acme"}')</div>
+    <div class="out">'{"vendor": "Acme"}'</div>
+  </div>
+
+  <p>This is idempotent — if there's no fence, it returns the text unchanged. Always run it before <code>json.loads()</code>.</p>
+
+  <hr>
+
+  <!-- STEP 4: LLM SELF-CORRECTION -->
+  <h2><span class="step-num">04</span> LLM Self-Correction</h2>
+
+  <p>When the model returns unparseable or schema-invalid JSON, don't just raise. <strong>Tell the model what it did wrong and ask it to fix it.</strong> Models are surprisingly good at correcting their own output when you show them the error.</p>
+
+  <p>This works by continuing the conversation: append the bad response as an <code>assistant</code> message, then add a <code>user</code> message explaining the problem.</p>
+
+  <div class="code-block">
+    <div class="code-header">
+      self-correction pattern
+      <button class="copy-btn" onclick="copyCode(this)">copy</button>
+    </div>
+    <pre><span class="k">import</span> json
+<span class="k">import</span> anthropic
+<span class="k">from</span> pydantic <span class="k">import</span> BaseModel, ValidationError
+<span class="k">from</span> json_utils <span class="k">import</span> strip_json_fence
+
+<span class="k">def</span> <span class="f">extract_with_correction</span>(
+    client: anthropic.Anthropic,
+    model_class: type[BaseModel],
+    messages: list,
+    system: str,
+    model: str = <span class="s">"claude-sonnet-4-6"</span>,
+    max_corrections: <span class="t">int</span> = <span class="n">2</span>,
+) -> BaseModel:
+    <span class="s">"""Call the LLM and retry with correction message if output is invalid."""</span>
+    conversation = list(messages)   <span class="c"># don't mutate caller's list</span>
+
+    <span class="k">for</span> attempt <span class="k">in</span> range(max_corrections + <span class="n">1</span>):
+        response = client.messages.create(
+            model=model,
+            max_tokens=<span class="n">1024</span>,
+            system=system,
+            messages=conversation,
+        )
+        raw = strip_json_fence(response.content[<span class="n">0</span>].text)
+
+        <span class="k">try</span>:
+            data = json.loads(raw)
+            <span class="k">return</span> model_class(**data)
+
+        <span class="k">except</span> (json.JSONDecodeError, ValidationError) <span class="k">as</span> e:
+            <span class="k">if</span> attempt == max_corrections:
+                <span class="k">raise</span> ValueError(<span class="s">f"Model failed after {max_corrections} corrections: {e}"</span>)
+
+            <span class="c"># Append bad response + correction request to conversation</span>
+            conversation.append({<span class="s">"role"</span>: <span class="s">"assistant"</span>, <span class="s">"content"</span>: response.content[<span class="n">0</span>].text})
+            conversation.append({
+                <span class="s">"role"</span>: <span class="s">"user"</span>,
+                <span class="s">"content"</span>: (
+                    <span class="s">f"Your response was invalid. Error: {e}\n\n"</span>
+                    <span class="s">f"Return ONLY valid JSON with no prose or fences. Try again."</span>
+                )
+            })
+            print(<span class="s">f"[correction] attempt {attempt+1}: {type(e).__name__}"</span>)</pre>
+  </div>
+
+  <div class="callout note">
+    <strong>Why does appending to the conversation work?</strong>
+    The LLM has no memory between calls — each call is stateless. When you append the previous bad response as an <code>assistant</code> message, you're literally showing the model what it said and asking it to fix it. It can see its own mistake and correct it.
+  </div>
+
+  <hr>
+
+  <!-- STEP 5: FINAL EXTRACTOR -->
+  <h2><span class="step-num">05</span> Putting It All Together</h2>
+
+  <p>Here's the production-grade version of your invoice extractor, combining all three layers:</p>
+
+  <div class="code-block">
+    <div class="code-header">
+      extractor_v2.py — complete production extractor
+      <button class="copy-btn" onclick="copyCode(this)">copy</button>
+    </div>
+    <pre><span class="k">import</span> json
+<span class="k">import</span> re
+<span class="k">import</span> time
+<span class="k">import</span> anthropic
+<span class="k">from</span> dotenv <span class="k">import</span> load_dotenv
+<span class="k">from</span> pydantic <span class="k">import</span> BaseModel, ValidationError
+<span class="k">from</span> typing <span class="k">import</span> Optional
+
+load_dotenv()
+client = anthropic.Anthropic()
+
+
+<span class="c"># ── Models ──────────────────────────────────────────────────────────────────</span>
+
+<span class="k">class</span> <span class="f">LineItem</span>(BaseModel):
+    description: str
+    amount: float
+
+<span class="k">class</span> <span class="f">Invoice</span>(BaseModel):
+    vendor: str
+    amount: float
+    date: Optional[str] = None
+    description: Optional[str] = None
+    line_items: list[LineItem] = []
+
+
+<span class="c"># ── Helpers ──────────────────────────────────────────────────────────────────</span>
+
+<span class="k">def</span> <span class="f">strip_fence</span>(text: str) -> str:
+    text = text.strip()
+    match = re.search(<span class="s">r'```(?:json)?\s*([\s\S]*?)```'</span>, text)
+    <span class="k">return</span> match.group(<span class="n">1</span>).strip() <span class="k">if</span> match <span class="k">else</span> text
+
+<span class="k">def</span> <span class="f">create_with_retry</span>(max_retries=<span class="n">3</span>, **kwargs):
+    <span class="k">for</span> attempt <span class="k">in</span> range(max_retries):
+        <span class="k">try</span>:
+            <span class="k">return</span> client.messages.create(**kwargs)
+        <span class="k">except</span> (anthropic.RateLimitError, anthropic.APIConnectionError) <span class="k">as</span> e:
+            <span class="k">if</span> attempt == max_retries - <span class="n">1</span>: <span class="k">raise</span>
+            time.sleep(<span class="n">2</span> ** attempt)
+        <span class="k">except</span> anthropic.APIStatusError <span class="k">as</span> e:
+            <span class="k">if</span> e.status_code < <span class="n">500</span>: <span class="k">raise</span>
+            <span class="k">if</span> attempt == max_retries - <span class="n">1</span>: <span class="k">raise</span>
+            time.sleep(<span class="n">2</span> ** attempt)
+
+
+SYSTEM = <span class="s">"""You are a data extraction engine.
+Extract invoice data and return ONLY a JSON object — no prose, no fences.
+Fields: vendor (str), amount (float), date (str|null), description (str|null),
+line_items (array of {description: str, amount: float})."""</span>
+
+
+<span class="c"># ── Main extractor ───────────────────────────────────────────────────────────</span>
+
+<span class="k">def</span> <span class="f">extract_invoice</span>(raw_text: str, max_corrections: <span class="t">int</span> = <span class="n">2</span>) -> Invoice:
+    conversation = [{<span class="s">"role"</span>: <span class="s">"user"</span>, <span class="s">"content"</span>: raw_text}]
+
+    <span class="k">for</span> attempt <span class="k">in</span> range(max_corrections + <span class="n">1</span>):
+        response = create_with_retry(
+            model=<span class="s">"claude-sonnet-4-6"</span>,
+            max_tokens=<span class="n">1024</span>,
+            system=SYSTEM,
+            messages=conversation,
+        )
+        raw = strip_fence(response.content[<span class="n">0</span>].text)
+
+        <span class="k">try</span>:
+            <span class="k">return</span> Invoice(**json.loads(raw))
+        <span class="k">except</span> (json.JSONDecodeError, ValidationError) <span class="k">as</span> e:
+            <span class="k">if</span> attempt == max_corrections:
+                <span class="k">raise</span> ValueError(<span class="s">f"Failed after {max_corrections} corrections: {e}"</span>)
+            conversation += [
+                {<span class="s">"role"</span>: <span class="s">"assistant"</span>, <span class="s">"content"</span>: response.content[<span class="n">0</span>].text},
+                {<span class="s">"role"</span>: <span class="s">"user"</span>, <span class="s">"content"</span>: <span class="s">f"Invalid response — {e}. Return only valid JSON."</span>},
+            ]
+            print(<span class="s">f"[correction {attempt+1}] {type(e).__name__}"</span>)
+
+
+<span class="c"># ── Test ──────────────────────────────────────────────────────────────────────</span>
+
+sample = <span class="s">"""OVERDUE NOTICE — Invoice #INV-2024-089
+From: DataFlow Solutions (UK)
+Total: £12,400.00 GBP — PAYMENT 30 DAYS OVERDUE
+
+Items:
+- Cloud infrastructure audit: £4,500
+- Security penetration testing: £5,200
+- Remediation report and recommendations: £2,700
+"""</span>
+
+invoice = extract_invoice(sample)
+print(<span class="s">f"Vendor:     {invoice.vendor}"</span>)
+print(<span class="s">f"Amount:     {invoice.amount}"</span>)
+print(<span class="s">f"Date:       {invoice.date}"</span>)
+print(<span class="s">f"Line items: {len(invoice.line_items)}"</span>)
+<span class="k">for</span> item <span class="k">in</span> invoice.line_items:
+    print(<span class="s">f"  - {item.description}: {item.amount}"</span>)</pre>
+  </div>
+
+  <div class="callout tip">
+    <strong>Notice the structure:</strong> <code>extract_invoice</code> owns the retry-on-bad-output loop. <code>create_with_retry</code> owns the HTTP-level retry loop. These are two separate concerns — keep them separate. One handles network failures, the other handles LLM output failures.
+  </div>
+
+  <hr>
+
+  <!-- CHALLENGE -->
+  <div class="challenge">
+    <h3>Challenge: Add a Timeout</h3>
+    <p>Sometimes API calls hang — the connection is open but no data comes. Add a <strong>timeout</strong> to the API call so it raises after 30 seconds instead of hanging forever.</p>
+    <p style="margin-top:0.75rem">Hint: The Anthropic client accepts a <code>timeout</code> parameter. Check the <a href="https://github.com/anthropics/anthropic-sdk-python#request-timeout" target="_blank" style="color:var(--yellow-text); text-decoration:underline">SDK docs</a> or try:</p>
+    <div class="code-block" style="margin-top:0.5rem">
+      <pre style="color:#fde68a; background:#1e1e2e; font-size:0.78rem"><span class="c"># Where should this go?</span>
+client = anthropic.Anthropic(timeout=<span class="n">30.0</span>)
+
+<span class="c"># Or per-call? Explore both options.</span>
+<span class="c"># What exception does a timeout raise? Add handling for it.</span></pre>
+    </div>
+  </div>
+
+  <hr>
+
+  <!-- QUIZ -->
+  <div class="quiz" id="quiz">
+    <h2>Check Your Understanding</h2>
+    <p style="color:var(--muted); font-size:0.9rem; margin-top:0.25rem;">3 questions.</p>
+
+    <div class="quiz-question" id="q1">
+      <p>1. You get a <code>400 Bad Request</code> error — your model name has a typo. Should you retry?</p>
+      <label class="quiz-option"><input type="radio" name="q1" value="a">Yes — it might be a transient error</label>
+      <label class="quiz-option"><input type="radio" name="q1" value="b">No — 4xx means the request itself is wrong; retrying the same broken request is pointless</label>
+      <label class="quiz-option"><input type="radio" name="q1" value="c">Yes, but only once</label>
+    </div>
+
+    <div class="quiz-question" id="q2">
+      <p>2. The model returns <code>```json\n{"vendor": "Acme"}\n```</code>. What does <code>json.loads()</code> do with this?</p>
+      <label class="quiz-option"><input type="radio" name="q2" value="a">Parses it correctly — json.loads is smart enough to strip the fences</label>
+      <label class="quiz-option"><input type="radio" name="q2" value="b">Raises <code>JSONDecodeError</code> — the backticks are not valid JSON</label>
+      <label class="quiz-option"><input type="radio" name="q2" value="c">Returns an empty dict</label>
+    </div>
+
+    <div class="quiz-question" id="q3">
+      <p>3. In the self-correction pattern, you append the bad response as an <code>assistant</code> message before asking the model to fix it. Why?</p>
+      <label class="quiz-option"><input type="radio" name="q3" value="a">It's required by the Anthropic API — messages must alternate roles</label>
+      <label class="quiz-option"><input type="radio" name="q3" value="b">Each API call is stateless — appending the bad response is how you show the model what it said so it can correct itself</label>
+      <label class="quiz-option"><input type="radio" name="q3" value="c">It reduces token usage on the follow-up call</label>
+    </div>
+
+    <button class="quiz-submit" onclick="submitQuiz()">Check answers</button>
+    <div class="quiz-result" id="quiz-result"></div>
+  </div>
+
+  <hr>
+
+  <h2>What's Next</h2>
+  <p>Your extractor now handles the real world. The next big leap on the 90-day roadmap:</p>
+  <ul>
+    <li><strong>Lesson 03: Tool Calling</strong> — instead of extracting data from text, let Claude decide which functions to call. This is the foundation of every agent.</li>
+    <li><strong>Lesson 04: FastAPI endpoint</strong> — wrap your extractor in an HTTP API so other services can call it</li>
+  </ul>
+
+  <div class="callout tip">
+    <strong>Ask your teacher anything.</strong>
+    Confused about when to use per-call vs client-level timeout? Want to understand how <code>**kwargs</code> works in more depth? Return to your Claude Code session and ask.
+  </div>
+
+</div>
+
+<div class="lesson-footer">
+  <strong>References</strong>
+  <div class="resources">
+    <a href="https://docs.anthropic.com/en/api/errors" target="_blank">Anthropic API Errors</a>
+    <a href="https://github.com/anthropics/anthropic-sdk-python#request-timeout" target="_blank">SDK Timeout Docs</a>
+    <a href="https://docs.python.org/3/library/re.html" target="_blank">Python re module</a>
+    <a href="../reference/python-llm-quickstart.html" target="_blank">Python + LLM Cheat Sheet</a>
+    <a href="../reference/ai-engineering-glossary.html" target="_blank">AI Engineering Glossary</a>
+  </div>
+</div>
+
+<script>
+const ANSWERS = { q1: 'b', q2: 'b', q3: 'b' };
+
+function submitQuiz() {
+  let score = 0;
+  ['q1','q2','q3'].forEach(qid => {
+    const selected = document.querySelector(`input[name="${qid}"]:checked`);
+    const options = document.querySelectorAll(`#${qid} .quiz-option`);
+    options.forEach(opt => { opt.classList.remove('correct','wrong'); opt.style.pointerEvents = 'none'; });
+    if (selected) {
+      selected.closest('.quiz-option').classList.add(selected.value === ANSWERS[qid] ? 'correct' : 'wrong');
+      if (selected.value === ANSWERS[qid]) score++;
+      else options.forEach(opt => { if (opt.querySelector('input').value === ANSWERS[qid]) opt.classList.add('correct'); });
+    }
+  });
+  const r = document.getElementById('quiz-result');
+  r.style.display = 'block';
+  r.className = 'quiz-result ' + (score >= 2 ? 'pass' : 'fail');
+  r.textContent = score === 3 ? '3/3 — Solid. You understand all three failure layers. On to Lesson 03.' :
+                  score === 2 ? '2/3 — Good. Review the highlighted answer above.' :
+                  `${score}/3 — Re-read steps 2–4, then retry.`;
+  document.querySelector('.quiz-submit').disabled = true;
+}
+
+function copyCode(btn) {
+  const pre = btn.closest('.code-block').querySelector('pre');
+  navigator.clipboard.writeText(pre.innerText).then(() => {
+    btn.textContent = 'copied!';
+    setTimeout(() => btn.textContent = 'copy', 1500);
+  });
+}
+</script>
+</body>
+</html>
