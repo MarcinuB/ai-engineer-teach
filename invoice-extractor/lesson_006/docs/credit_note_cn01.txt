@@ -1,0 +1,5 @@
+Credit Note #CN-01
+Issued to: Beta Ltd
+Amount: €200
+Reason: duplicate charge on Invoice #1001 — refunded 2026-05-20
+Net effect: Beta Ltd balance reduced by €200

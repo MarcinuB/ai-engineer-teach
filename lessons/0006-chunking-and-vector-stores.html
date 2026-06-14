@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 06 — Chunking & Vector Stores</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #222536;
+    --border: #2e3148;
+    --text: #e2e4f0;
+    --muted: #8b8fa8;
+    --accent: #7c6af7;
+    --accent2: #4fc3f7;
+    --green: #4caf87;
+    --yellow: #f7c948;
+    --red: #f76a6a;
+    --orange: #f79a48;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Georgia', serif; line-height: 1.7; }
+  .container { max-width: 820px; margin: 0 auto; padding: 48px 24px 96px; }
+
+  h1 { font-size: 2rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
+  h2 { font-size: 1.3rem; font-weight: 600; color: var(--accent2); margin: 40px 0 12px; }
+  h3 { font-size: 1rem; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+  p { color: var(--muted); margin-bottom: 14px; }
+  strong { color: var(--text); }
+  ul, ol { color: var(--muted); padding-left: 20px; margin-bottom: 14px; }
+  li { margin-bottom: 4px; }
+
+  .meta { color: var(--muted); font-size: 0.85rem; margin-bottom: 40px; font-family: monospace; }
+
+  .problem-box {
+    background: #1a1010;
+    border: 1px solid #4a2020;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin: 24px 0;
+  }
+  .problem-box .label { color: var(--red); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; }
+
+  .concept-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin: 24px 0;
+  }
+
+  .step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin: 20px 0;
+  }
+  .step .step-label { color: var(--accent); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; font-family: monospace; }
+
+  .nugget {
+    background: #141a0f;
+    border: 1px solid #2a4020;
+    border-left: 3px solid var(--green);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin: 24px 0;
+  }
+  .nugget .label { color: var(--green); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; font-family: monospace; }
+
+  .challenge {
+    background: #121020;
+    border: 1px solid #3a2a60;
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin: 24px 0;
+  }
+  .challenge .label { color: var(--accent); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; font-family: monospace; }
+
+  pre {
+    background: #0a0b10;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    margin: 14px 0;
+    font-family: 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 0.85rem;
+    line-height: 1.6;
+  }
+  code { font-family: 'Fira Code', 'Cascadia Code', monospace; font-size: 0.88em; color: var(--accent2); }
+  pre code { color: var(--text); font-size: 1em; }
+
+  .kw { color: #c792ea; }
+  .fn { color: #82aaff; }
+  .str { color: #c3e88d; }
+  .cm { color: #546e7a; font-style: italic; }
+  .num { color: #f78c6c; }
+  .cls { color: var(--yellow); }
+
+  /* SVG diagram */
+  svg { display: block; margin: 24px auto; }
+
+  .diagram-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    margin: 24px 0;
+    overflow-x: auto;
+  }
+
+  .callout {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    font-size: 0.9rem;
+  }
+
+  .tip {
+    background: #0f1a20;
+    border: 1px solid #1a4060;
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  .tip strong { color: var(--accent2); }
+
+  footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="meta">Lesson 06 · Days 31–60: Production RAG</div>
+  <h1>Chunking &amp; Vector Stores</h1>
+  <p>Your RAG pipeline from lesson 05 works — but it has two problems that will bite you on any real project. This lesson fixes both.</p>
+
+  <!-- ── PROBLEM ─────────────────────────────────────────────────── -->
+  <div class="problem-box">
+    <div class="label">The two problems with lesson 05</div>
+    <p style="margin-bottom:10px"><strong>1. You re-embed every time you run the script.</strong> Embedding 100 documents takes a second or two. Embedding 10,000 takes minutes — and you'd be doing it on every startup.</p>
+    <p style="margin-bottom:0"><strong>2. You embed whole documents.</strong> If a document is 3,000 words, the embedding averages everything together. "Invoice 001 is overdue" and "Invoice 002 was paid" collapse into one blurry vector. Retrieval loses precision, and you may inject far more text than the model's context window can handle.</p>
+  </div>
+
+  <p>The industry solution: <strong>chunk first, then store embeddings in a vector database that persists to disk</strong>. You only embed once; after that it's just a query.</p>
+
+  <!-- ── CONCEPTS ────────────────────────────────────────────────── -->
+  <h2>Chunking</h2>
+
+  <p>A chunk is a short, self-contained excerpt of a document — usually 200–500 words. The goal is to make each chunk answer a single question well.</p>
+
+  <div class="diagram-wrap">
+    <svg viewBox="0 0 700 200" width="100%" height="200">
+      <!-- Document -->
+      <rect x="10" y="20" width="120" height="160" rx="6" fill="#1a1d27" stroke="#2e3148"/>
+      <text x="70" y="44" text-anchor="middle" fill="#8b8fa8" font-size="11" font-family="monospace">document.txt</text>
+      <rect x="20" y="52" width="100" height="10" rx="2" fill="#2e3148"/>
+      <rect x="20" y="68" width="100" height="10" rx="2" fill="#2e3148"/>
+      <rect x="20" y="84" width="80" height="10" rx="2" fill="#2e3148"/>
+      <rect x="20" y="100" width="100" height="10" rx="2" fill="#2e3148"/>
+      <rect x="20" y="116" width="90" height="10" rx="2" fill="#2e3148"/>
+      <rect x="20" y="132" width="100" height="10" rx="2" fill="#2e3148"/>
+      <rect x="20" y="148" width="60" height="10" rx="2" fill="#2e3148"/>
+      <text x="70" y="175" text-anchor="middle" fill="#546e7a" font-size="9" font-family="monospace">1 document</text>
+
+      <!-- Arrow -->
+      <path d="M140 100 L190 100" stroke="#7c6af7" stroke-width="2" marker-end="url(#arr)"/>
+      <text x="165" y="90" text-anchor="middle" fill="#7c6af7" font-size="10" font-family="monospace">chunk()</text>
+
+      <!-- Chunks -->
+      <rect x="200" y="20" width="90" height="50" rx="4" fill="#1a1d27" stroke="#7c6af7"/>
+      <rect x="210" y="30" width="70" height="8" rx="2" fill="#2e3148"/>
+      <rect x="210" y="44" width="70" height="8" rx="2" fill="#2e3148"/>
+      <rect x="210" y="58" width="50" height="8" rx="2" fill="#2e3148"/>
+      <text x="245" y="82" text-anchor="middle" fill="#7c6af7" font-size="9" font-family="monospace">chunk 0</text>
+
+      <!-- overlap indicator -->
+      <rect x="200" y="88" width="90" height="50" rx="4" fill="#1a1d27" stroke="#4fc3f7"/>
+      <rect x="210" y="98" width="70" height="8" rx="2" fill="#2e3148"/>
+      <rect x="210" y="112" width="70" height="8" rx="2" fill="#2e3148"/>
+      <rect x="210" y="126" width="50" height="8" rx="2" fill="#2e3148"/>
+      <text x="245" y="150" text-anchor="middle" fill="#4fc3f7" font-size="9" font-family="monospace">chunk 1</text>
+
+      <rect x="200" y="156" width="90" height="30" rx="4" fill="#1a1d27" stroke="#4caf87"/>
+      <rect x="210" y="166" width="70" height="8" rx="2" fill="#2e3148"/>
+      <text x="245" y="198" text-anchor="middle" fill="#4caf87" font-size="9" font-family="monospace">chunk 2</text>
+
+      <!-- overlap bracket -->
+      <path d="M296 58 L310 58 L310 98 L296 98" stroke="#f7c948" stroke-width="1.5" fill="none"/>
+      <text x="318" y="82" fill="#f7c948" font-size="9" font-family="monospace">overlap</text>
+
+      <!-- Arrow to embed -->
+      <path d="M300 100 L360 100" stroke="#7c6af7" stroke-width="2" marker-end="url(#arr)"/>
+      <text x="330" y="90" text-anchor="middle" fill="#7c6af7" font-size="10" font-family="monospace">embed()</text>
+
+      <!-- Vectors -->
+      <rect x="370" y="20" width="70" height="50" rx="4" fill="#1a1d27" stroke="#7c6af7"/>
+      <text x="405" y="50" text-anchor="middle" fill="#7c6af7" font-size="9" font-family="monospace">[0.12, …]</text>
+
+      <rect x="370" y="88" width="70" height="50" rx="4" fill="#1a1d27" stroke="#4fc3f7"/>
+      <text x="405" y="118" text-anchor="middle" fill="#4fc3f7" font-size="9" font-family="monospace">[0.44, …]</text>
+
+      <rect x="370" y="156" width="70" height="30" rx="4" fill="#1a1d27" stroke="#4caf87"/>
+      <text x="405" y="175" text-anchor="middle" fill="#4caf87" font-size="9" font-family="monospace">[0.71, …]</text>
+
+      <!-- Arrow to store -->
+      <path d="M446 100 L490 100" stroke="#7c6af7" stroke-width="2" marker-end="url(#arr)"/>
+      <text x="468" y="90" text-anchor="middle" fill="#7c6af7" font-size="10" font-family="monospace">store</text>
+
+      <!-- ChromaDB -->
+      <rect x="498" y="30" width="90" height="140" rx="8" fill="#1a1d27" stroke="#f7c948"/>
+      <text x="543" y="55" text-anchor="middle" fill="#f7c948" font-size="11" font-family="monospace">ChromaDB</text>
+      <rect x="510" y="65" width="70" height="8" rx="2" fill="#2e3148"/>
+      <rect x="510" y="79" width="70" height="8" rx="2" fill="#2e3148"/>
+      <rect x="510" y="93" width="70" height="8" rx="2" fill="#2e3148"/>
+      <rect x="510" y="107" width="70" height="8" rx="2" fill="#2e3148"/>
+      <rect x="510" y="121" width="70" height="8" rx="2" fill="#2e3148"/>
+      <rect x="510" y="135" width="70" height="8" rx="2" fill="#2e3148"/>
+      <text x="543" y="160" text-anchor="middle" fill="#546e7a" font-size="9" font-family="monospace">persisted on disk</text>
+
+      <defs>
+        <marker id="arr" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto">
+          <path d="M0,0 L6,3 L0,6 Z" fill="#7c6af7"/>
+        </marker>
+      </defs>
+    </svg>
+  </div>
+
+  <h3>Overlap</h3>
+  <p>If you split rigidly at chunk boundaries, a sentence can get cut in half. <strong>Overlap</strong> means each chunk shares some words with the next one, so no context falls into a gap.</p>
+
+  <div class="callout">
+    Example: chunk size 300 words, overlap 50 words. Chunk 0 = words 0–299. Chunk 1 = words 250–549. The 50-word overlap is shared between both.
+  </div>
+
+  <!-- ── CHROMADB ────────────────────────────────────────────────── -->
+  <h2>ChromaDB</h2>
+
+  <p>ChromaDB is a local vector database written in Python. It:</p>
+  <ul>
+    <li>Stores embeddings + metadata + original text together</li>
+    <li>Persists to disk — no re-embedding on restart</li>
+    <li>Queries by semantic similarity in one call</li>
+    <li>Runs fully local, no API key needed</li>
+  </ul>
+
+  <div class="tip">
+    <strong>OpenAI alternative:</strong> In production you'd use a hosted store like Pinecone, Weaviate, or pgvector. ChromaDB is the right choice for local development — same concepts, zero ops.
+  </div>
+
+  <!-- ── BUILD ──────────────────────────────────────────────────── -->
+  <h2>What You'll Build</h2>
+  <p>A two-file pipeline: <code>ingest.py</code> (chunk + embed + store, run once) and <code>rag.py</code> (query + answer, run any time).</p>
+
+  <pre>lesson_006/
+  docs/          ← same .txt files as lesson 05
+  chroma_db/     ← created automatically by ChromaDB
+  ingest.py      ← chunk, embed, persist
+  rag.py         ← query, retrieve, answer</pre>
+
+  <!-- ── STEP 1 ──────────────────────────────────────────────────── -->
+  <div class="step">
+    <div class="step-label">Step 1 — Setup</div>
+    <p>Create the <code>lesson_006</code> folder and copy your docs from lesson 05:</p>
+    <pre>mkdir -p invoice-extractor/lesson_006/docs
+cp invoice-extractor/lesson_005/docs/*.txt invoice-extractor/lesson_006/docs/</pre>
+    <p>Install ChromaDB:</p>
+    <pre>pip install chromadb</pre>
+  </div>
+
+  <!-- ── STEP 2 ──────────────────────────────────────────────────── -->
+  <div class="step">
+    <div class="step-label">Step 2 — Write the chunker</div>
+    <p>Create <code>invoice-extractor/lesson_006/ingest.py</code>. Start with a chunk function:</p>
+    <pre><span class="kw">def</span> <span class="fn">chunk_text</span>(text: str, size: int = <span class="num">300</span>, overlap: int = <span class="num">50</span>) -&gt; list[str]:
+    words = text.split()
+    chunks = []
+    start = <span class="num">0</span>
+    <span class="kw">while</span> start &lt; len(words):
+        end = start + size
+        chunk = <span class="str">" "</span>.join(words[start:end])
+        chunks.append(chunk)
+        <span class="kw">if</span> end &gt;= len(words):
+            <span class="kw">break</span>
+        start += size - overlap
+    <span class="kw">return</span> chunks</pre>
+    <p>This splits on whitespace, slides a window of <code>size</code> words, stepping <code>size - overlap</code> each time.</p>
+  </div>
+
+  <div class="nugget">
+    <div class="label">Python nugget — list slicing</div>
+    <p><code>words[start:end]</code> returns a new list from index <code>start</code> up to (not including) <code>end</code>. No error if <code>end</code> goes past the list length — Python just returns what's there.</p>
+    <pre>[<span class="num">10</span>, <span class="num">20</span>, <span class="num">30</span>, <span class="num">40</span>][<span class="num">1</span>:<span class="num">10</span>]  <span class="cm"># → [20, 30, 40] — no IndexError</span></pre>
+    <p>Contrast with indexing: <code>words[10]</code> on a 4-element list throws <code>IndexError</code>, but <code>words[1:10]</code> does not.</p>
+  </div>
+
+  <!-- ── STEP 3 ──────────────────────────────────────────────────── -->
+  <div class="step">
+    <div class="step-label">Step 3 — Set up ChromaDB + embed client</div>
+    <p>Add imports and initialise everything at the top of <code>ingest.py</code>:</p>
+    <pre><span class="kw">import</span> chromadb
+<span class="kw">from</span> pathlib <span class="kw">import</span> Path
+<span class="kw">from</span> openai <span class="kw">import</span> OpenAI
+
+client = <span class="cls">OpenAI</span>(base_url=<span class="str">"http://localhost:11434/v1"</span>, api_key=<span class="str">"ollama"</span>)
+EMBED_MODEL = <span class="str">"nomic-embed-text"</span>
+
+DOCS_DIR = <span class="cls">Path</span>(__file__).parent / <span class="str">"docs"</span>
+DB_DIR   = <span class="cls">Path</span>(__file__).parent / <span class="str">"chroma_db"</span>
+
+chroma = chromadb.<span class="fn">PersistentClient</span>(path=str(DB_DIR))
+collection = chroma.<span class="fn">get_or_create_collection</span>(name=<span class="str">"invoices"</span>)</pre>
+    <p><code>PersistentClient</code> saves to disk. <code>get_or_create_collection</code> is idempotent — safe to call every run.</p>
+  </div>
+
+  <div class="nugget">
+    <div class="label">Python nugget — str() on Path</div>
+    <p>Many older libraries (including ChromaDB) expect a plain <code>str</code> path, not a <code>pathlib.Path</code> object. Wrap with <code>str()</code> when passing to them:</p>
+    <pre>p = <span class="cls">Path</span>(<span class="str">"/some/dir"</span>)
+<span class="fn">open</span>(p)        <span class="cm"># fine — built-ins accept Path</span>
+some_lib(p)   <span class="cm"># might crash — use str(p) instead</span></pre>
+  </div>
+
+  <!-- ── STEP 4 ──────────────────────────────────────────────────── -->
+  <div class="step">
+    <div class="step-label">Step 4 — Chunk, embed, and store</div>
+    <p>Add an <code>embed</code> helper, then the ingestion loop:</p>
+    <pre><span class="kw">def</span> <span class="fn">embed</span>(text: str) -&gt; list[float]:
+    resp = client.embeddings.<span class="fn">create</span>(model=EMBED_MODEL, input=text)
+    <span class="kw">return</span> resp.data[<span class="num">0</span>].embedding
+
+
+<span class="kw">def</span> <span class="fn">ingest</span>():
+    <span class="kw">for</span> path <span class="kw">in</span> <span class="fn">sorted</span>(DOCS_DIR.<span class="fn">glob</span>(<span class="str">"*.txt"</span>)):
+        text = path.<span class="fn">read_text</span>(encoding=<span class="str">"utf-8"</span>)
+        chunks = <span class="fn">chunk_text</span>(text)
+
+        <span class="kw">for</span> i, chunk <span class="kw">in</span> <span class="fn">enumerate</span>(chunks):
+            doc_id = <span class="str">f"</span>{path.stem}<span class="str">_chunk</span>{i}<span class="str">"</span>
+            collection.<span class="fn">add</span>(
+                ids=[doc_id],
+                documents=[chunk],
+                embeddings=[<span class="fn">embed</span>(chunk)],
+                metadatas=[{<span class="str">"source"</span>: path.name, <span class="str">"chunk"</span>: i}],
+            )
+            <span class="fn">print</span>(<span class="str">f"  stored </span>{doc_id}<span class="str">"</span>)
+
+        <span class="fn">print</span>(<span class="str">f"Ingested </span>{path.name}<span class="str">: </span>{<span class="fn">len</span>(chunks)}<span class="str"> chunks"</span>)
+
+
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    <span class="fn">ingest</span>()</pre>
+    <p>Each chunk gets a unique ID (<code>invoice_001_chunk0</code>), its embedding, and metadata so you know which file and chunk index it came from.</p>
+    <p>Run it:</p>
+    <pre>python invoice-extractor/lesson_006/ingest.py</pre>
+    <p>You should see one line per chunk. The <code>chroma_db/</code> folder will appear on disk.</p>
+  </div>
+
+  <div class="nugget">
+    <div class="label">Python nugget — f-string with attribute access</div>
+    <p><code>path.stem</code> gives the filename without extension. You can call attributes and methods inside <code>f"..."</code> curly braces:</p>
+    <pre>p = <span class="cls">Path</span>(<span class="str">"invoice_001.txt"</span>)
+<span class="str">f"</span>{p.stem}<span class="str">"</span>   <span class="cm"># → "invoice_001"</span>
+<span class="str">f"</span>{p.name}<span class="str">"</span>   <span class="cm"># → "invoice_001.txt"</span>
+<span class="str">f"</span>{p.suffix}<span class="str">"</span> <span class="cm"># → ".txt"</span></pre>
+  </div>
+
+  <!-- ── STEP 5 ──────────────────────────────────────────────────── -->
+  <div class="step">
+    <div class="step-label">Step 5 — Query from ChromaDB</div>
+    <p>Create <code>invoice-extractor/lesson_006/rag.py</code>. This file doesn't embed documents — it only queries:</p>
+    <pre><span class="kw">import</span> chromadb
+<span class="kw">from</span> pathlib <span class="kw">import</span> Path
+<span class="kw">from</span> openai <span class="kw">import</span> OpenAI
+
+client = <span class="cls">OpenAI</span>(base_url=<span class="str">"http://localhost:11434/v1"</span>, api_key=<span class="str">"ollama"</span>)
+EMBED_MODEL = <span class="str">"nomic-embed-text"</span>
+CHAT_MODEL  = <span class="str">"llama3.2"</span>
+
+DB_DIR = <span class="cls">Path</span>(__file__).parent / <span class="str">"chroma_db"</span>
+chroma = chromadb.<span class="fn">PersistentClient</span>(path=<span class="fn">str</span>(DB_DIR))
+collection = chroma.<span class="fn">get_collection</span>(name=<span class="str">"invoices"</span>)
+
+
+<span class="kw">def</span> <span class="fn">embed</span>(text: str) -&gt; list[float]:
+    resp = client.embeddings.<span class="fn">create</span>(model=EMBED_MODEL, input=text)
+    <span class="kw">return</span> resp.data[<span class="num">0</span>].embedding
+
+
+<span class="kw">def</span> <span class="fn">search</span>(query: str, top_k: int = <span class="num">3</span>, max_distance: float = <span class="num">0.5</span>) -&gt; list[dict]:
+    results = collection.<span class="fn">query</span>(
+        query_embeddings=[<span class="fn">embed</span>(query)],
+        n_results=top_k,
+        include=[<span class="str">"documents"</span>, <span class="str">"metadatas"</span>, <span class="str">"distances"</span>],
+    )
+    chunks = results[<span class="str">"documents"</span>][<span class="num">0</span>]
+    metas  = results[<span class="str">"metadatas"</span>][<span class="num">0</span>]
+    dists  = results[<span class="str">"distances"</span>][<span class="num">0</span>]
+    <span class="kw">return</span> [
+        {<span class="str">"text"</span>: c, <span class="str">"source"</span>: m[<span class="str">"source"</span>], <span class="str">"distance"</span>: d}
+        <span class="kw">for</span> c, m, d <span class="kw">in</span> <span class="fn">zip</span>(chunks, metas, dists)
+        <span class="kw">if</span> d &lt;= max_distance
+    ]
+
+
+<span class="kw">def</span> <span class="fn">rag_query</span>(question: str) -&gt; str:
+    results = <span class="fn">search</span>(question)
+
+    <span class="kw">for</span> i, r <span class="kw">in</span> <span class="fn">enumerate</span>(results):
+        <span class="fn">print</span>(<span class="str">f"  [{i+1}] dist={r['distance']:.3f} src={r['source']} | {r['text'][:80]}"</span>)
+
+    context = <span class="str">"\n\n"</span>.<span class="fn">join</span>(
+        <span class="str">f"[Source: </span>{r['source']}<span class="str">]\n</span>{r['text']}<span class="str">"</span> <span class="kw">for</span> r <span class="kw">in</span> results
+    )
+
+    system_prompt = <span class="str">f"""You are an invoice assistant. Answer using ONLY the documents below.
+If the answer is not in the documents, say so explicitly.
+
+Documents:
+{context}"""</span>
+
+    resp = client.chat.completions.<span class="fn">create</span>(
+        model=CHAT_MODEL,
+        messages=[
+            {<span class="str">"role"</span>: <span class="str">"system"</span>, <span class="str">"content"</span>: system_prompt},
+            {<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: question},
+        ],
+    )
+    <span class="kw">return</span> resp.choices[<span class="num">0</span>].message.content
+
+
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    questions = [
+        <span class="str">"Which invoices are overdue?"</span>,
+        <span class="str">"Did Beta Ltd receive any credit notes?"</span>,
+        <span class="str">"What is the weather in Warsaw today?"</span>,
+    ]
+    <span class="kw">for</span> q <span class="kw">in</span> questions:
+        <span class="fn">print</span>(<span class="str">f"\nQ: </span>{q}<span class="str">"</span>)
+        <span class="fn">print</span>(<span class="str">f"A: </span>{<span class="fn">rag_query</span>(q)}<span class="str">"</span>)
+</pre>
+    <p>Notice that ChromaDB uses <strong>distance</strong>, not similarity. Lower distance = more similar. It uses L2 (Euclidean) distance by default — opposite direction from cosine similarity score.</p>
+  </div>
+
+  <!-- ── DISTANCE NOTE ─────────────────────────────────────────── -->
+  <div class="concept-box">
+    <h3>Distance vs Similarity</h3>
+    <p>Your lesson 05 code used cosine <em>similarity</em> (higher = more similar, max 1.0). ChromaDB returns <em>distance</em> (lower = more similar, min 0.0). To filter by distance, you'd use <code>distance &lt; 0.8</code> instead of <code>score &gt; 0.6</code>.</p>
+    <p>You can switch ChromaDB to cosine by passing <code>metadata={"hnsw:space": "cosine"}</code> to <code>get_or_create_collection</code> — but for now the default is fine. Just remember: <strong>distance, not score</strong>.</p>
+  </div>
+
+  <!-- ── CHALLENGES ─────────────────────────────────────────────── -->
+  <h2>Challenges</h2>
+
+  <div class="challenge">
+    <div class="label">Challenge 1 — Cosine space</div>
+    <p>Change <code>get_or_create_collection</code> in <code>ingest.py</code> to use cosine distance:</p>
+    <pre>collection = chroma.<span class="fn">get_or_create_collection</span>(
+    name=<span class="str">"invoices"</span>,
+    metadata={<span class="str">"hnsw:space"</span>: <span class="str">"cosine"</span>},
+)</pre>
+    <p>Delete <code>chroma_db/</code> and re-run <code>ingest.py</code>. Then update your threshold in <code>rag.py</code> — distances are now 0.0–1.0 where 0.0 = identical. What threshold makes sense?</p>
+  </div>
+
+  <div class="challenge">
+    <div class="label">Challenge 2 — Show sources in the answer</div>
+    <p>Change <code>rag_query</code> to return both the answer and the list of source files that were used. Print them separately:</p>
+    <pre>A: Invoice 001 and Invoice 003 are overdue.
+Sources: invoice_001.txt, invoice_003.txt</pre>
+    <p>Hint: the metadata dict has a <code>"source"</code> key. You already have <code>results</code> in scope.</p>
+  </div>
+
+  <div class="challenge">
+    <div class="label">Challenge 3 — Idempotent ingest</div>
+    <p>Right now, running <code>ingest.py</code> twice will try to add duplicate IDs and crash. Fix it: before adding chunks for a file, check if that file's chunks already exist and skip it.</p>
+    <p>Hint: <code>collection.get(ids=[doc_id])</code> returns a result with an <code>"ids"</code> list — check if it's empty.</p>
+  </div>
+
+  <!-- ── QUESTIONS ──────────────────────────────────────────────── -->
+  <h2>Ask Your Teacher</h2>
+  <p>Anything unclear — ask directly in the terminal:</p>
+  <ul>
+    <li>How does ChromaDB store embeddings on disk? What format?</li>
+    <li>What's HNSW and why does ChromaDB use it?</li>
+    <li>When would I switch from ChromaDB to Pinecone?</li>
+    <li>How do I handle documents that are already short — should I still chunk them?</li>
+  </ul>
+
+  <!-- ── QUIZ ───────────────────────────────────────────────────── -->
+  <h2>Quick Quiz</h2>
+  <p>Five questions. Click an answer — you'll know immediately if it's right.</p>
+
+  <div id="quiz"></div>
+  <div id="quiz-score" style="display:none; margin-top:24px; padding:18px 22px; background:var(--surface); border:1px solid var(--border); border-radius:8px; font-family:monospace; font-size:1rem;"></div>
+
+  <script>
+  const QUESTIONS = [
+    {
+      q: "Why embed chunks instead of whole documents?",
+      options: [
+        "Chunks are faster to send over the network",
+        "Averaging a whole document into one vector loses fine-grained meaning",
+        "ChromaDB has a maximum document length",
+        "Ollama only accepts short inputs",
+      ],
+      answer: 1,
+      explanation: "A single vector for a 3,000-word document averages everything together. A query about one invoice can't distinguish which paragraph matched — retrieval becomes imprecise.",
+    },
+    {
+      q: "What is the purpose of overlap when chunking a document?",
+      options: [
+        "To reduce the total number of chunks produced",
+        "To prevent context from being lost at chunk boundaries — the end of one chunk repeats at the start of the next",
+        "To ensure all chunks are exactly the same token length",
+        "To avoid re-embedding identical content",
+      ],
+      answer: 1,
+      explanation: "Without overlap, a sentence split across a boundary loses its surrounding context. Overlap repeats a window of content so neither chunk is missing its neighbourhood.",
+    },
+    {
+      q: "ChromaDB returns distance=0.12 for one result and distance=0.80 for another. Which is a better match?",
+      options: [
+        "0.80 — higher distance means more similar",
+        "0.12 — lower distance means more similar",
+        "They're equal — distance doesn't measure similarity",
+        "Depends on the embedding model",
+      ],
+      answer: 1,
+      explanation: "Distance is the inverse of similarity. 0.0 = identical, higher = further apart. 0.12 is a strong match; 0.80 is a weak one.",
+    },
+    {
+      q: "What does get_or_create_collection do if the collection already exists?",
+      options: [
+        "Raises an error — you must delete it first",
+        "Deletes it and creates a fresh one",
+        "Returns the existing collection without modifying it",
+        "Merges the new collection with the old one",
+      ],
+      answer: 2,
+      explanation: "It's idempotent — safe to call on every startup. If the collection exists it just returns it; if not, it creates it. This is why ingest.py can call it at the top without an if/else.",
+    },
+    {
+      q: "Why does a vector store persist embeddings to disk rather than keeping them in memory?",
+      options: [
+        "Disk is faster than RAM for floating-point arithmetic",
+        "So you only embed each document once — on restart you query the stored vectors rather than re-embedding everything",
+        "Vector stores require disk access to compute cosine similarity",
+        "In-memory embeddings expire after the process ends and become invalid",
+      ],
+      answer: 1,
+      explanation: "Embedding is the expensive step — it calls the model for every chunk. Persisting means you pay that cost once at ingest time. Every subsequent query just reads vectors from disk and scores them.",
+    },
+  ];
+
+  function buildQuiz() {
+    const container = document.getElementById('quiz');
+    QUESTIONS.forEach((q, qi) => {
+      const block = document.createElement('div');
+      block.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px 24px;margin:16px 0;';
+      block.innerHTML = `<p style="color:var(--text);font-weight:600;margin-bottom:14px">${qi + 1}. ${q.q}</p>` +
+        q.options.map((opt, oi) =>
+          `<button onclick="answer(${qi},${oi},this)"
+            style="display:block;width:100%;text-align:left;background:var(--surface2);border:1px solid var(--border);
+                   border-radius:6px;padding:10px 14px;margin:6px 0;color:var(--muted);cursor:pointer;
+                   font-family:Georgia,serif;font-size:0.9rem;transition:border-color 0.15s"
+            onmouseover="if(!this.disabled)this.style.borderColor='var(--accent)'"
+            onmouseout="if(!this.disabled)this.style.borderColor='var(--border)'"
+          >${opt}</button>`
+        ).join('') +
+        `<div id="exp-${qi}" style="display:none;margin-top:12px;padding:12px 14px;border-radius:6px;font-size:0.88rem;"></div>`;
+      container.appendChild(block);
+    });
+  }
+
+  let score = 0, answered = 0;
+
+  function answer(qi, oi, btn) {
+    const btns = btn.parentElement.querySelectorAll('button');
+    btns.forEach(b => { b.disabled = true; b.style.cursor = 'default'; });
+
+    const correct = oi === QUESTIONS[qi].answer;
+    if (correct) score++;
+    answered++;
+
+    btn.style.background = correct ? '#0f2a1a' : '#2a0f0f';
+    btn.style.borderColor = correct ? 'var(--green)' : 'var(--red)';
+    btn.style.color = correct ? 'var(--green)' : 'var(--red)';
+
+    const correctBtn = btns[QUESTIONS[qi].answer];
+    if (!correct) {
+      correctBtn.style.background = '#0f2a1a';
+      correctBtn.style.borderColor = 'var(--green)';
+      correctBtn.style.color = 'var(--green)';
+    }
+
+    const exp = document.getElementById(`exp-${qi}`);
+    exp.style.display = 'block';
+    exp.style.background = correct ? '#0f2a1a' : '#1a0f0f';
+    exp.style.border = `1px solid ${correct ? 'var(--green)' : 'var(--red)'}`;
+    exp.style.color = 'var(--muted)';
+    exp.innerHTML = `<strong style="color:${correct ? 'var(--green)' : 'var(--red)'}">${correct ? '✓ Correct' : '✗ Wrong'}</strong> — ${QUESTIONS[qi].explanation}`;
+
+    if (answered === QUESTIONS.length) showScore();
+  }
+
+  function showScore() {
+    const el = document.getElementById('quiz-score');
+    el.style.display = 'block';
+    const pct = Math.round(score / QUESTIONS.length * 100);
+    const color = pct >= 80 ? 'var(--green)' : pct >= 60 ? 'var(--yellow)' : 'var(--red)';
+    el.innerHTML = `<span style="color:${color};font-size:1.3rem">${score}/${QUESTIONS.length}</span>
+      <span style="color:var(--muted);margin-left:12px">${pct}% — ${pct >= 80 ? 'solid' : pct >= 60 ? 'mostly there' : 'worth a re-read'}</span>`;
+  }
+
+  buildQuiz();
+  </script>
+
+  <footer>
+    <p>Lesson 06 of the 90-day AI Engineering curriculum · Open next: <code>open lessons/0007-*.html</code></p>
+  </footer>
+
+</div>
+</body>
+</html>

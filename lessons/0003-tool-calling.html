@@ -531,6 +531,138 @@ MODEL = <span class="st">"claude-haiku-4-5-20251001"</span>
 
 <hr class="divider" />
 
+<hr class="divider" />
+
+<h2>Quick Quiz</h2>
+<p>Five questions. Click an answer — immediate feedback.</p>
+
+<div id="quiz"></div>
+<div id="quiz-score" style="display:none; margin-top:24px; padding:18px 22px; background:var(--surface); border:1px solid var(--border); border-radius:8px; font-family:monospace; font-size:1rem;"></div>
+
+<script>
+const QUESTIONS = [
+  {
+    q: "The model returns finish_reason == \"tool_calls\". What must you do next?",
+    options: [
+      "Parse the model's text response and display it",
+      "Execute the requested function(s) and send the result back in the next API call",
+      "Retry the same API call — the model didn't finish",
+      "End the conversation loop",
+    ],
+    answer: 1,
+    explanation: "tool_calls means the model is paused, waiting for you to run a function. You must call it, then send the result back so the model can continue.",
+  },
+  {
+    q: "tool_call.function.arguments — what Python type is it?",
+    options: [
+      "A dict you can use directly",
+      "A list of key-value pairs",
+      "A JSON string you must parse with json.loads()",
+      "An integer index into TOOL_MAP",
+    ],
+    answer: 2,
+    explanation: "arguments comes back as a raw JSON string, not a dict. You must call json.loads(tool_call.function.arguments) before you can index into it.",
+  },
+  {
+    q: "Why must you append response.choices[0].message to messages before the tool result?",
+    options: [
+      "API requirement — messages must strictly alternate roles",
+      "The tool result message references the original tool_call_id — the model needs to see the call it made to match the result",
+      "To reduce token count on the next request",
+      "So the model knows what question was originally asked",
+    ],
+    answer: 1,
+    explanation: "Each tool result message carries a tool_call_id. The model matches it to the assistant message that requested it. Without that assistant message in history, the ID has nothing to reference.",
+  },
+  {
+    q: "What does a TOOL_MAP dict do?",
+    options: [
+      "Stores the JSON schema for each tool so the model knows what arguments to pass",
+      "Maps tool name strings to actual Python functions so you can dispatch by name",
+      "Tracks how many times each tool has been called",
+      "Validates tool arguments against the schema before calling",
+    ],
+    answer: 1,
+    explanation: "The model returns a tool name as a string (e.g. \"get_vat_rate\"). TOOL_MAP[name] gives you the Python function to call. Without it you'd need a giant if/elif chain.",
+  },
+  {
+    q: "A tool function is missing its return statement and returns None. The model receives null. What's the likely outcome?",
+    options: [
+      "Python raises TypeError immediately",
+      "The API call crashes with a validation error",
+      "The model treats null as a valid result and may produce wrong or confused output",
+      "The loop retries the tool call automatically",
+    ],
+    answer: 2,
+    explanation: "Python silently returns None from functions without a return. null is valid JSON, so the API accepts it — but the model gets nonsense data and its answer will be wrong or hallucinated.",
+  },
+];
+
+function buildQuiz() {
+  const container = document.getElementById('quiz');
+  QUESTIONS.forEach((q, qi) => {
+    const block = document.createElement('div');
+    block.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px 24px;margin:16px 0;';
+    block.innerHTML = `<p style="color:var(--text);font-weight:600;margin-bottom:14px">${qi + 1}. ${q.q}</p>` +
+      q.options.map((opt, oi) =>
+        `<button onclick="answer(${qi},${oi},this)"
+          style="display:block;width:100%;text-align:left;background:var(--surface2);border:1px solid var(--border);
+                 border-radius:6px;padding:10px 14px;margin:6px 0;color:var(--muted);cursor:pointer;
+                 font-family:inherit;font-size:0.9rem;transition:border-color 0.15s"
+          onmouseover="if(!this.disabled)this.style.borderColor='var(--accent)'"
+          onmouseout="if(!this.disabled)this.style.borderColor='var(--border)'"
+        >${opt}</button>`
+      ).join('') +
+      `<div id="exp-${qi}" style="display:none;margin-top:12px;padding:12px 14px;border-radius:6px;font-size:0.88rem;"></div>`;
+    container.appendChild(block);
+  });
+}
+
+let score = 0, answered = 0;
+
+function answer(qi, oi, btn) {
+  const btns = btn.parentElement.querySelectorAll('button');
+  btns.forEach(b => { b.disabled = true; b.style.cursor = 'default'; });
+
+  const correct = oi === QUESTIONS[qi].answer;
+  if (correct) score++;
+  answered++;
+
+  btn.style.background = correct ? '#0f2a1a' : '#2a0f0f';
+  btn.style.borderColor = correct ? 'var(--green)' : 'var(--red)';
+  btn.style.color = correct ? 'var(--green)' : 'var(--red)';
+
+  const correctBtn = btns[QUESTIONS[qi].answer];
+  if (!correct) {
+    correctBtn.style.background = '#0f2a1a';
+    correctBtn.style.borderColor = 'var(--green)';
+    correctBtn.style.color = 'var(--green)';
+  }
+
+  const exp = document.getElementById(`exp-${qi}`);
+  exp.style.display = 'block';
+  exp.style.background = correct ? '#0f2a1a' : '#1a0f0f';
+  exp.style.border = `1px solid ${correct ? 'var(--green)' : 'var(--red)'}`;
+  exp.style.color = 'var(--muted)';
+  exp.innerHTML = `<strong style="color:${correct ? 'var(--green)' : 'var(--red)'}">${correct ? '✓ Correct' : '✗ Wrong'}</strong> — ${QUESTIONS[qi].explanation}`;
+
+  if (answered === QUESTIONS.length) showScore();
+}
+
+function showScore() {
+  const el = document.getElementById('quiz-score');
+  el.style.display = 'block';
+  const pct = Math.round(score / QUESTIONS.length * 100);
+  const color = pct >= 80 ? 'var(--green)' : pct >= 60 ? 'var(--yellow)' : 'var(--red)';
+  el.innerHTML = `<span style="color:${color};font-size:1.3rem">${score}/${QUESTIONS.length}</span>
+    <span style="color:var(--muted);margin-left:12px">${pct}% — ${pct >= 80 ? 'solid' : pct >= 60 ? 'mostly there' : 'worth a re-read'}</span>`;
+}
+
+buildQuiz();
+</script>
+
+<hr class="divider" />
+
 <div class="footer">
   <p>Lesson 03 · AI Engineering ·
      <a href="https://platform.openai.com/docs/guides/function-calling" target="_blank">OpenAI Function Calling Docs</a> ·

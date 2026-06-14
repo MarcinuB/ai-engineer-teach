@@ -535,6 +535,138 @@ python rag.py</code></pre>
 
 <hr class="divider" />
 
+<hr class="divider" />
+
+<h2>Quick Quiz</h2>
+<p>Five questions. Click an answer — immediate feedback.</p>
+
+<div id="quiz"></div>
+<div id="quiz-score" style="display:none; margin-top:24px; padding:18px 22px; background:var(--surface); border:1px solid var(--border); border-radius:8px; font-family:monospace; font-size:1rem;"></div>
+
+<script>
+const QUESTIONS = [
+  {
+    q: "What does RAG stand for?",
+    options: [
+      "Random Answer Generation",
+      "Retrieval-Augmented Generation",
+      "Recursive Agent Grounding",
+      "Retrieval-Agent Graph",
+    ],
+    answer: 1,
+    explanation: "Retrieval-Augmented Generation: retrieve relevant documents, then augment the LLM's prompt with them so it generates an answer grounded in your data.",
+  },
+  {
+    q: "Why inject retrieved documents into the prompt rather than fine-tuning the model on them?",
+    options: [
+      "Fine-tuning is too expensive to run locally",
+      "Injected documents can be updated instantly without retraining, and the model can say \"not in documents\" when it can't find the answer",
+      "System prompts are cached, making retrieval faster",
+      "Fine-tuned models always hallucinate on new domains",
+    ],
+    answer: 1,
+    explanation: "Fine-tuning bakes knowledge into weights — you can't update it without retraining, and the model can't distinguish \"I know this from training\" vs \"I know this from your data\". RAG keeps knowledge external and auditable.",
+  },
+  {
+    q: "You set threshold=0.5. An unrelated weather question retrieves an invoice document with score 0.52. Best fix?",
+    options: [
+      "Lower the threshold to 0.3 so only very strong matches get through",
+      "Raise the threshold — e.g. 0.6 — to filter out weak matches",
+      "Switch to a different embedding model",
+      "Add weather documents to the corpus",
+    ],
+    answer: 1,
+    explanation: "Threshold is a precision/recall dial. Too low → noise gets through. Raise it to require stronger matches. You found this yourself — 0.6 worked better than 0.5 for your invoice docs.",
+  },
+  {
+    q: "extra_body={\"system\": system_prompt} in the Ollama API call — why doesn't this work?",
+    options: [
+      "Ollama doesn't support system prompts at all",
+      "extra_body is a non-standard field that Ollama silently ignores — use {\"role\": \"system\"} in the messages list instead",
+      "It's a Python syntax error",
+      "The system prompt must come after the user message",
+    ],
+    answer: 1,
+    explanation: "The OpenAI SDK allows extra_body for provider-specific extensions, but Ollama doesn't read it. The correct way is {\"role\": \"system\", \"content\": prompt} as the first message in the messages list.",
+  },
+  {
+    q: "\"\\n\\n\".join(parts) — what does this produce if parts = [\"A\", \"B\", \"C\"]?",
+    options: [
+      "\"ABC\"",
+      "\"A\\nB\\nC\"",
+      "\"A\\n\\nB\\n\\nC\"",
+      "[\"A\", \"\\n\\n\", \"B\", \"\\n\\n\", \"C\"]",
+    ],
+    answer: 2,
+    explanation: "join() inserts the separator between each element — not at the start or end. Two newlines between each document creates a clear visual break when injected into the prompt.",
+  },
+];
+
+function buildQuiz() {
+  const container = document.getElementById('quiz');
+  QUESTIONS.forEach((q, qi) => {
+    const block = document.createElement('div');
+    block.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px 24px;margin:16px 0;';
+    block.innerHTML = `<p style="color:var(--text);font-weight:600;margin-bottom:14px">${qi + 1}. ${q.q}</p>` +
+      q.options.map((opt, oi) =>
+        `<button onclick="answer(${qi},${oi},this)"
+          style="display:block;width:100%;text-align:left;background:var(--surface2);border:1px solid var(--border);
+                 border-radius:6px;padding:10px 14px;margin:6px 0;color:var(--muted);cursor:pointer;
+                 font-family:inherit;font-size:0.9rem;transition:border-color 0.15s"
+          onmouseover="if(!this.disabled)this.style.borderColor='var(--accent)'"
+          onmouseout="if(!this.disabled)this.style.borderColor='var(--border)'"
+        >${opt}</button>`
+      ).join('') +
+      `<div id="exp-${qi}" style="display:none;margin-top:12px;padding:12px 14px;border-radius:6px;font-size:0.88rem;"></div>`;
+    container.appendChild(block);
+  });
+}
+
+let score = 0, answered = 0;
+
+function answer(qi, oi, btn) {
+  const btns = btn.parentElement.querySelectorAll('button');
+  btns.forEach(b => { b.disabled = true; b.style.cursor = 'default'; });
+
+  const correct = oi === QUESTIONS[qi].answer;
+  if (correct) score++;
+  answered++;
+
+  btn.style.background = correct ? '#0f2a1a' : '#2a0f0f';
+  btn.style.borderColor = correct ? 'var(--green)' : 'var(--red)';
+  btn.style.color = correct ? 'var(--green)' : 'var(--red)';
+
+  const correctBtn = btns[QUESTIONS[qi].answer];
+  if (!correct) {
+    correctBtn.style.background = '#0f2a1a';
+    correctBtn.style.borderColor = 'var(--green)';
+    correctBtn.style.color = 'var(--green)';
+  }
+
+  const exp = document.getElementById(`exp-${qi}`);
+  exp.style.display = 'block';
+  exp.style.background = correct ? '#0f2a1a' : '#1a0f0f';
+  exp.style.border = `1px solid ${correct ? 'var(--green)' : 'var(--red)'}`;
+  exp.style.color = 'var(--muted)';
+  exp.innerHTML = `<strong style="color:${correct ? 'var(--green)' : 'var(--red)'}">${correct ? '✓ Correct' : '✗ Wrong'}</strong> — ${QUESTIONS[qi].explanation}`;
+
+  if (answered === QUESTIONS.length) showScore();
+}
+
+function showScore() {
+  const el = document.getElementById('quiz-score');
+  el.style.display = 'block';
+  const pct = Math.round(score / QUESTIONS.length * 100);
+  const color = pct >= 80 ? 'var(--green)' : pct >= 60 ? 'var(--yellow)' : 'var(--red)';
+  el.innerHTML = `<span style="color:${color};font-size:1.3rem">${score}/${QUESTIONS.length}</span>
+    <span style="color:var(--muted);margin-left:12px">${pct}% — ${pct >= 80 ? 'solid' : pct >= 60 ? 'mostly there' : 'worth a re-read'}</span>`;
+}
+
+buildQuiz();
+</script>
+
+<hr class="divider" />
+
 <div class="footer">
   <p>Lesson 05 · AI Engineering ·
     <a href="https://platform.openai.com/docs/guides/embeddings" target="_blank">OpenAI Embeddings</a> ·

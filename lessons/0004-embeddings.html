@@ -672,6 +672,138 @@ python search.py</code></pre>
 
 <hr class="divider" />
 
+<hr class="divider" />
+
+<h2>Quick Quiz</h2>
+<p>Five questions. Click an answer — immediate feedback.</p>
+
+<div id="quiz"></div>
+<div id="quiz-score" style="display:none; margin-top:24px; padding:18px 22px; background:var(--surface); border:1px solid var(--border); border-radius:8px; font-family:monospace; font-size:1rem;"></div>
+
+<script>
+const QUESTIONS = [
+  {
+    q: "What does an embedding model turn text into?",
+    options: [
+      "A compressed copy of the original text, like gzip",
+      "A fixed-length list of floats that encodes semantic meaning",
+      "A sequence of token IDs",
+      "A dictionary of word frequencies",
+    ],
+    answer: 1,
+    explanation: "An embedding is a dense vector — a list of floats (e.g. 768 of them). The position in that 768-dimensional space encodes meaning: similar meanings end up close together.",
+  },
+  {
+    q: "Why use cosine similarity instead of dot product to compare embeddings?",
+    options: [
+      "Cosine is faster to compute in high dimensions",
+      "Dot product doesn't work with negative float values",
+      "Cosine normalises for vector magnitude — only direction matters, not length",
+      "Cosine always returns a value between 0 and 100",
+    ],
+    answer: 2,
+    explanation: "Two embeddings can point in the same direction (same meaning) but have different magnitudes (e.g. one was computed from a longer sentence). Cosine divides out the length so you're comparing meaning, not magnitude.",
+  },
+  {
+    q: "\"Unpaid\" and \"overdue\" mean different things but have similar embeddings. Why?",
+    options: [
+      "The model has a built-in synonym dictionary",
+      "They appear in similar contexts in training data — the model learned they're semantically related",
+      "Both words have the same character count",
+      "The tokeniser maps them to the same token",
+    ],
+    answer: 1,
+    explanation: "Embeddings come from predicting surrounding words (context). \"Unpaid\" and \"overdue\" appear in similar sentences about finance/invoices, so their vectors end up close in the embedding space — no explicit synonym list needed.",
+  },
+  {
+    q: "Your script loads 5 documents and embeds them at startup. A user then runs search(). How many embed() calls happen during that search()?",
+    options: [
+      "5 — one per document",
+      "6 — one per document plus one for the query",
+      "1 — only the query; document embeddings were already computed at startup",
+      "0 — ChromaDB handles it internally",
+    ],
+    answer: 2,
+    explanation: "doc_embeddings is computed once when the module loads. search() only calls embed() once — for the query — then scores it against the already-stored doc vectors.",
+  },
+  {
+    q: "sorted(zip(docs, scores), key=lambda p: p[1], reverse=True) — what does reverse=True do?",
+    options: [
+      "Reverses the original docs list in place",
+      "Sorts in descending order — highest score first",
+      "Removes duplicate scores",
+      "Makes sort stable (preserves original order for equal scores)",
+    ],
+    answer: 1,
+    explanation: "By default sorted() returns lowest first (ascending). reverse=True flips it to highest first — exactly what you want for ranking: best match at index 0.",
+  },
+];
+
+function buildQuiz() {
+  const container = document.getElementById('quiz');
+  QUESTIONS.forEach((q, qi) => {
+    const block = document.createElement('div');
+    block.style.cssText = 'background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:20px 24px;margin:16px 0;';
+    block.innerHTML = `<p style="color:var(--text);font-weight:600;margin-bottom:14px">${qi + 1}. ${q.q}</p>` +
+      q.options.map((opt, oi) =>
+        `<button onclick="answer(${qi},${oi},this)"
+          style="display:block;width:100%;text-align:left;background:var(--surface2);border:1px solid var(--border);
+                 border-radius:6px;padding:10px 14px;margin:6px 0;color:var(--muted);cursor:pointer;
+                 font-family:inherit;font-size:0.9rem;transition:border-color 0.15s"
+          onmouseover="if(!this.disabled)this.style.borderColor='var(--accent)'"
+          onmouseout="if(!this.disabled)this.style.borderColor='var(--border)'"
+        >${opt}</button>`
+      ).join('') +
+      `<div id="exp-${qi}" style="display:none;margin-top:12px;padding:12px 14px;border-radius:6px;font-size:0.88rem;"></div>`;
+    container.appendChild(block);
+  });
+}
+
+let score = 0, answered = 0;
+
+function answer(qi, oi, btn) {
+  const btns = btn.parentElement.querySelectorAll('button');
+  btns.forEach(b => { b.disabled = true; b.style.cursor = 'default'; });
+
+  const correct = oi === QUESTIONS[qi].answer;
+  if (correct) score++;
+  answered++;
+
+  btn.style.background = correct ? '#0f2a1a' : '#2a0f0f';
+  btn.style.borderColor = correct ? 'var(--green)' : 'var(--red)';
+  btn.style.color = correct ? 'var(--green)' : 'var(--red)';
+
+  const correctBtn = btns[QUESTIONS[qi].answer];
+  if (!correct) {
+    correctBtn.style.background = '#0f2a1a';
+    correctBtn.style.borderColor = 'var(--green)';
+    correctBtn.style.color = 'var(--green)';
+  }
+
+  const exp = document.getElementById(`exp-${qi}`);
+  exp.style.display = 'block';
+  exp.style.background = correct ? '#0f2a1a' : '#1a0f0f';
+  exp.style.border = `1px solid ${correct ? 'var(--green)' : 'var(--red)'}`;
+  exp.style.color = 'var(--muted)';
+  exp.innerHTML = `<strong style="color:${correct ? 'var(--green)' : 'var(--red)'}">${correct ? '✓ Correct' : '✗ Wrong'}</strong> — ${QUESTIONS[qi].explanation}`;
+
+  if (answered === QUESTIONS.length) showScore();
+}
+
+function showScore() {
+  const el = document.getElementById('quiz-score');
+  el.style.display = 'block';
+  const pct = Math.round(score / QUESTIONS.length * 100);
+  const color = pct >= 80 ? 'var(--green)' : pct >= 60 ? 'var(--yellow)' : 'var(--red)';
+  el.innerHTML = `<span style="color:${color};font-size:1.3rem">${score}/${QUESTIONS.length}</span>
+    <span style="color:var(--muted);margin-left:12px">${pct}% — ${pct >= 80 ? 'solid' : pct >= 60 ? 'mostly there' : 'worth a re-read'}</span>`;
+}
+
+buildQuiz();
+</script>
+
+<hr class="divider" />
+
 <div class="footer">
   <p>Lesson 04 · AI Engineering ·
     <a href="https://platform.openai.com/docs/guides/embeddings" target="_blank">OpenAI Embeddings Docs</a> ·

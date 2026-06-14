@@ -1,0 +1,8 @@
+Invoice #1004
+Client: Delta SA, Warsaw
+Amount: €8,400 net — annual infrastructure support contract
+Issue date: 2026-04-15
+Due date: 2026-05-15
+Status: OVERDUE — payment 29 days late
+Contact: finance@delta-sa.pl
+Note: Client requested 30-day extension by email on 2026-05-10. Not agreed.
