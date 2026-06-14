@@ -1,0 +1,687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lesson 04 — Embeddings &amp; Semantic Search</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3250;
+      --accent: #6c8ef7;
+      --accent2: #a78bfa;
+      --green: #4ade80;
+      --yellow: #fbbf24;
+      --red: #f87171;
+      --orange: #fb923c;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --code-bg: #12141e;
+      --python: #facc15;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 48px 24px 96px;
+    }
+
+    h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; color: #fff; }
+    h2 { font-size: 1.3rem; font-weight: 600; color: var(--accent); margin: 2.5rem 0 0.8rem; }
+    h3 { font-size: 1rem; font-weight: 600; color: var(--text); margin: 1.5rem 0 0.5rem; }
+    p  { color: var(--muted); margin-bottom: 1rem; }
+    strong { color: var(--text); }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .lesson-meta { display: flex; gap: 12px; align-items: center; margin-bottom: 2rem; }
+    .lesson-badge {
+      background: var(--accent); color: #0f1117;
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em;
+      padding: 3px 10px; border-radius: 999px; text-transform: uppercase;
+    }
+    .lesson-num { color: var(--muted); font-size: 0.85rem; }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 24px;
+      overflow-x: auto;
+      margin: 0.6rem 0 1.2rem;
+      font-size: 0.85rem;
+      line-height: 1.6;
+    }
+    code {
+      font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+      color: var(--text);
+    }
+    p code, li code, td code {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 0.82em;
+      color: var(--accent2);
+    }
+
+    .kw  { color: #818cf8; }
+    .fn  { color: #60a5fa; }
+    .st  { color: #86efac; }
+    .co  { color: #475569; font-style: italic; }
+    .nu  { color: #fb923c; }
+    .ty  { color: #a78bfa; }
+    .cm  { color: #fbbf24; }
+
+    /* Callouts */
+    .callout { border-radius: 8px; padding: 14px 18px; margin: 1rem 0 1.5rem; font-size: 0.88rem; }
+    .callout-info   { background: #1e2d4a; border-left: 3px solid var(--accent); }
+    .callout-warn   { background: #2a1f0a; border-left: 3px solid var(--yellow); }
+    .callout-tip    { background: #0d2918; border-left: 3px solid var(--green); }
+    .callout-python { background: #221f05; border-left: 3px solid var(--python); }
+    .callout p      { margin: 0 0 0.4rem; color: var(--text); }
+    .callout p:last-child { margin: 0; }
+    .callout-title  { font-weight: 700; margin-bottom: 6px; font-size: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase; }
+    .callout-title.python { color: var(--python); }
+    .callout-title.tip    { color: var(--green); }
+    .callout-title.warn   { color: var(--yellow); }
+    .callout-title.info   { color: var(--accent); }
+
+    /* SVG figures */
+    .fig {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px;
+      margin: 1rem 0 1.5rem;
+      overflow: hidden;
+    }
+    .fig svg { display: block; width: 100%; height: auto; }
+    .fig-caption {
+      text-align: center;
+      font-size: 0.75rem;
+      color: var(--muted);
+      padding: 8px 12px 4px;
+      font-style: italic;
+    }
+
+    /* Table */
+    table { width: 100%; border-collapse: collapse; margin: 1rem 0 1.5rem; font-size: 0.85rem; }
+    th {
+      background: var(--surface2); color: var(--muted);
+      text-align: left; padding: 10px 14px;
+      font-weight: 600; font-size: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase;
+    }
+    td { padding: 10px 14px; border-top: 1px solid var(--border); color: var(--muted); }
+    td:first-child { color: var(--text); font-weight: 500; }
+    tr:hover td { background: var(--surface); }
+
+    /* Build steps */
+    .build-steps { counter-reset: bstep; padding: 0; list-style: none; margin: 1.2rem 0; }
+    .build-steps > li {
+      counter-increment: bstep;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 24px 20px 70px;
+      position: relative;
+      margin-bottom: 14px;
+    }
+    .build-steps > li::before {
+      content: counter(bstep);
+      position: absolute; left: 20px; top: 20px;
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--accent); color: #0f1117;
+      font-size: 0.85rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .build-steps > li > .step-title {
+      font-weight: 600; color: var(--text); margin-bottom: 8px; font-size: 0.95rem;
+    }
+    .build-steps > li p { margin-bottom: 0.7rem; }
+    .build-steps > li p:last-child { margin-bottom: 0; }
+
+    .filename {
+      font-size: 0.72rem; color: var(--muted); margin-bottom: -4px;
+      font-family: monospace; letter-spacing: 0.03em;
+    }
+
+    ul, ol { padding-left: 1.5rem; margin-bottom: 1rem; }
+    li { color: var(--muted); margin-bottom: 6px; }
+    li strong { color: var(--text); }
+
+    .footer {
+      margin-top: 4rem; padding-top: 2rem;
+      border-top: 1px solid var(--border);
+      text-align: center; font-size: 0.8rem; color: var(--muted);
+    }
+    .ask-me {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 14px 20px;
+      display: inline-block; margin-top: 1rem; font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span class="lesson-badge">AI Engineering</span>
+  <span class="lesson-num">Lesson 04</span>
+</div>
+<h1>Embeddings &amp; Semantic Search</h1>
+<p>Turn text into numbers that capture meaning — the foundation of RAG.</p>
+<hr class="divider" />
+
+<!-- ── CONCEPT ─────────────────────────────────────────── -->
+<h2>What is an embedding?</h2>
+
+<p>
+  An embedding model takes any piece of text and outputs a <strong>fixed-length list of floats</strong>
+  — typically 768 to 3072 numbers. The numbers are meaningless individually, but the list as a whole
+  encodes the <em>semantic meaning</em> of the text.
+</p>
+<p>
+  Texts with similar meaning end up with <strong>similar vectors</strong>. Texts about different topics
+  end up far apart. The diagram below shows a 2D projection — real embeddings have hundreds of dimensions,
+  but the clustering behaviour is the same.
+</p>
+
+<!-- SVG 1: 2D Embedding Space -->
+<div class="fig">
+  <svg viewBox="0 0 640 310" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+    <!-- background -->
+    <rect width="640" height="310" fill="#1a1d27"/>
+
+    <!-- axes -->
+    <line x1="60" y1="270" x2="590" y2="270" stroke="#2e3250" stroke-width="1.5"/>
+    <line x1="60" y1="270" x2="60"  y2="20"  stroke="#2e3250" stroke-width="1.5"/>
+
+    <!-- axis arrow heads -->
+    <polygon points="590,265 598,270 590,275" fill="#2e3250"/>
+    <polygon points="55,20 60,12 65,20"       fill="#2e3250"/>
+
+    <!-- axis labels -->
+    <text x="594" y="274" fill="#475569" font-size="11" dominant-baseline="middle">dim 1</text>
+    <text x="62"  y="14"  fill="#475569" font-size="11">dim 2</text>
+    <text x="320" y="297" fill="#475569" font-size="10" text-anchor="middle">2D projection — real embeddings have 768+ dimensions</text>
+
+    <!-- grid dots -->
+    <g fill="#2e3250" opacity="0.4">
+      <circle cx="160" cy="170" r="1.5"/>
+      <circle cx="240" cy="170" r="1.5"/>
+      <circle cx="320" cy="170" r="1.5"/>
+      <circle cx="400" cy="170" r="1.5"/>
+      <circle cx="480" cy="170" r="1.5"/>
+      <circle cx="160" cy="100" r="1.5"/>
+      <circle cx="240" cy="100" r="1.5"/>
+      <circle cx="320" cy="100" r="1.5"/>
+      <circle cx="400" cy="100" r="1.5"/>
+      <circle cx="480" cy="100" r="1.5"/>
+    </g>
+
+    <!-- ── Cluster 1: unrelated docs ── -->
+    <ellipse cx="168" cy="210" rx="58" ry="38" fill="none" stroke="#f87171" stroke-width="1" stroke-dasharray="5,4" opacity="0.5"/>
+
+    <circle cx="155" cy="215" r="6" fill="#f87171" opacity="0.7"/>
+    <text x="163" y="213" fill="#f87171" font-size="10.5" opacity="0.85">"Recipe for pierogi"</text>
+
+    <circle cx="175" cy="198" r="6" fill="#f87171" opacity="0.7"/>
+    <text x="183" y="196" fill="#f87171" font-size="10.5" opacity="0.85">"Football match result"</text>
+
+    <!-- ── Cluster 2: invoice docs ── -->
+    <ellipse cx="410" cy="105" rx="85" ry="52" fill="none" stroke="#6c8ef7" stroke-width="1" stroke-dasharray="5,4" opacity="0.6"/>
+
+    <!-- Credit note — slightly outside cluster but still related -->
+    <circle cx="342" cy="118" r="6" fill="#a78bfa" opacity="0.8"/>
+    <text x="350" y="122" fill="#a78bfa" font-size="10.5">"Credit note #CN-01"</text>
+
+    <circle cx="375" cy="132" r="6" fill="#6c8ef7" opacity="0.8"/>
+    <text x="383" y="136" fill="#94a3b8" font-size="10.5">"Invoice #1001 (paid)"</text>
+
+    <circle cx="415" cy="118" r="6" fill="#6c8ef7" opacity="0.8"/>
+    <text x="423" y="122" fill="#94a3b8" font-size="10.5">"Invoice #1003 (paid)"</text>
+
+    <circle cx="390" cy="88" r="6" fill="#f87171" opacity="0.85"/>
+    <text x="398" y="86" fill="#f87171" font-size="10.5">"Invoice #1002 (overdue)"</text>
+
+    <circle cx="430" cy="76" r="6" fill="#f87171" opacity="0.85"/>
+    <text x="438" y="74" fill="#f87171" font-size="10.5">"Invoice #1004 (overdue)"</text>
+
+    <!-- ── Query point ── -->
+    <!-- dashed lines to nearby cluster -->
+    <line x1="395" y1="52" x2="388" y2="82" stroke="#4ade80" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>
+    <line x1="395" y1="52" x2="428" y2="70" stroke="#4ade80" stroke-width="1" stroke-dasharray="4,3" opacity="0.5"/>
+
+    <circle cx="395" cy="52" r="8" fill="none" stroke="#4ade80" stroke-width="2"/>
+    <circle cx="395" cy="52" r="4" fill="#4ade80"/>
+    <text x="405" y="44" fill="#4ade80" font-size="11" font-weight="600">query: "Which invoices are unpaid?"</text>
+
+    <!-- ── Legend ── -->
+    <rect x="62" y="22" width="190" height="68" rx="6" fill="#12141e" stroke="#2e3250" stroke-width="1"/>
+    <circle cx="78"  cy="40" r="5" fill="#4ade80"/>
+    <text x="88" y="44" fill="#94a3b8" font-size="10.5">query</text>
+    <circle cx="78"  cy="58" r="5" fill="#f87171" opacity="0.85"/>
+    <text x="88" y="62" fill="#94a3b8" font-size="10.5">overdue / unrelated</text>
+    <circle cx="78"  cy="76" r="5" fill="#6c8ef7" opacity="0.8"/>
+    <text x="88" y="80" fill="#94a3b8" font-size="10.5">paid invoices</text>
+  </svg>
+  <p class="fig-caption">Similar texts cluster together. The query lands near overdue invoices — those get retrieved.</p>
+</div>
+
+<p>
+  This is the core of <strong>RAG</strong> (Retrieval-Augmented Generation): embed a user query,
+  compare it against embedded documents, retrieve the top matches, feed them to the LLM as context.
+  You'll build the full pipeline in the next lesson.
+</p>
+
+<hr class="divider" />
+
+<!-- ── COSINE SIMILARITY ───────────────────────────────── -->
+<h2>Cosine similarity — measuring the angle</h2>
+
+<p>
+  You don't compare embeddings by subtracting them. You measure the <strong>angle</strong> between them.
+  Two vectors pointing in the same direction have angle ≈ 0° → cosine ≈ 1.0.
+  Unrelated vectors point in different directions → cosine much lower.
+</p>
+
+<!-- SVG 2: Cosine angle diagram -->
+<div class="fig">
+  <svg viewBox="0 0 580 260" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+    <rect width="580" height="260" fill="#1a1d27"/>
+
+    <!-- ── Left panel: small angle (similar) ── -->
+    <text x="145" y="22" fill="#475569" font-size="11" text-anchor="middle">similar texts</text>
+
+    <!-- origin -->
+    <circle cx="60" cy="210" r="3" fill="#2e3250"/>
+
+    <!-- reference vector A -->
+    <line x1="60" y1="210" x2="300" y2="210" stroke="#2e3250" stroke-width="1.5" stroke-dasharray="4,3"/>
+    <polygon points="298,205 306,210 298,215" fill="#2e3250"/>
+
+    <!-- similar vector B  (angle ~15° above A) -->
+    <!-- endpoint: ox + len*cos(15°), oy - len*sin(15°) = 60+220*0.966, 210-220*0.259 = 272.5, 153 -->
+    <line x1="60" y1="210" x2="273" y2="153" stroke="#6c8ef7" stroke-width="2.5" stroke-linecap="round"/>
+    <polygon points="266,150 276,148 273,159" fill="#6c8ef7"/>
+    <text x="276" y="148" fill="#6c8ef7" font-size="11">"Unpaid invoice, Warsaw"</text>
+
+    <!-- query vector A -->
+    <line x1="60" y1="210" x2="280" y2="210" stroke="#4ade80" stroke-width="2.5" stroke-linecap="round"/>
+    <polygon points="273,205 282,210 273,215" fill="#4ade80"/>
+    <text x="284" y="214" fill="#4ade80" font-size="11">"Invoice overdue, Poland"</text>
+
+    <!-- arc showing small angle -->
+    <!-- arc from (110,210) to ~(107.5,198.3) radius 50, counterclockwise -->
+    <path d="M 110,210 A 50,50 0 0,0 108,197" stroke="#fbbf24" stroke-width="1.5" fill="none"/>
+    <text x="118" y="204" fill="#fbbf24" font-size="12" font-weight="600">θ ≈ 15°</text>
+
+    <!-- score badge -->
+    <rect x="55" y="228" width="140" height="22" rx="5" fill="#0d2918" stroke="#4ade80" stroke-width="1"/>
+    <text x="125" y="243" fill="#4ade80" font-size="11" text-anchor="middle" font-weight="600">cosine similarity: 0.97</text>
+
+    <!-- divider -->
+    <line x1="310" y1="15" x2="310" y2="250" stroke="#2e3250" stroke-width="1" stroke-dasharray="4,4"/>
+
+    <!-- ── Right panel: large angle (unrelated) ── -->
+    <text x="445" y="22" fill="#475569" font-size="11" text-anchor="middle">unrelated texts</text>
+
+    <!-- origin -->
+    <circle cx="325" cy="210" r="3" fill="#2e3250"/>
+
+    <!-- reference vector A -->
+    <line x1="325" y1="210" x2="565" y2="210" stroke="#2e3250" stroke-width="1.5" stroke-dasharray="4,3"/>
+    <polygon points="563,205 571,210 563,215" fill="#2e3250"/>
+
+    <!-- unrelated vector C (angle ~55° above A) -->
+    <!-- endpoint: 325 + 180*cos(55°), 210 - 180*sin(55°) = 325+103, 210-147 = 428, 63 -->
+    <line x1="325" y1="210" x2="428" y2="63" stroke="#f87171" stroke-width="2.5" stroke-linecap="round"/>
+    <polygon points="421,60 431,58 428,69" fill="#f87171"/>
+    <text x="432" y="57" fill="#f87171" font-size="11">"Recipe for pierogi"</text>
+
+    <!-- query vector A -->
+    <line x1="325" y1="210" x2="545" y2="210" stroke="#4ade80" stroke-width="2.5" stroke-linecap="round"/>
+    <polygon points="538,205 547,210 538,215" fill="#4ade80"/>
+    <text x="549" y="214" fill="#4ade80" font-size="11">"Invoice overdue"</text>
+
+    <!-- arc showing large angle — from (375,210) sweep to ~(375+50*cos55, 210-50*sin55) = (403.7, 169.1) -->
+    <path d="M 375,210 A 50,50 0 0,0 353.7,169.1" stroke="#fbbf24" stroke-width="1.5" fill="none"/>
+    <text x="385" y="185" fill="#fbbf24" font-size="12" font-weight="600">θ ≈ 55°</text>
+
+    <!-- score badge -->
+    <rect x="318" y="228" width="140" height="22" rx="5" fill="#2a1209" stroke="#f87171" stroke-width="1"/>
+    <text x="388" y="243" fill="#f87171" font-size="11" text-anchor="middle" font-weight="600">cosine similarity: 0.57</text>
+  </svg>
+  <p class="fig-caption">Cosine similarity = cos(θ). Small angle → high score. Large angle → low score. Length of the vector doesn't matter.</p>
+</div>
+
+<p>
+  Cosine is preferred over plain distance because embedding vectors vary wildly in magnitude.
+  Normalising by magnitude (dividing by the norms) removes that noise.
+</p>
+
+<hr class="divider" />
+
+<!-- ── MODELS TABLE ────────────────────────────────────── -->
+<h2>Models and providers</h2>
+
+<table>
+  <thead>
+    <tr><th>Model</th><th>Provider</th><th>Dimensions</th><th>Notes</th></tr>
+  </thead>
+  <tbody>
+    <tr><td><code>nomic-embed-text</code></td><td>Ollama (local)</td><td>768</td><td>Free, good quality, fast. Pull once.</td></tr>
+    <tr><td><code>mxbai-embed-large</code></td><td>Ollama (local)</td><td>1024</td><td>Better quality, larger download (~670 MB).</td></tr>
+    <tr><td><code>text-embedding-3-small</code></td><td>OpenAI</td><td>1536</td><td>Cheap ($0.02/1M tokens). Cloud.</td></tr>
+    <tr><td><code>text-embedding-3-large</code></td><td>OpenAI</td><td>3072</td><td>Highest quality. 5× cost of small.</td></tr>
+  </tbody>
+</table>
+
+<pre><code>ollama pull nomic-embed-text</code></pre>
+
+<hr class="divider" />
+
+<!-- ── BUILD STEPS ─────────────────────────────────────── -->
+<h2>Build it — step by step</h2>
+
+<p>Create <code>invoice-extractor/lesson_004/search.py</code> and add each block in order.</p>
+
+<ul class="build-steps">
+
+  <li>
+    <div class="step-title">Client setup</div>
+    <p>
+      Same pattern as lesson 03. Embedding models are separate from chat models —
+      you'll typically have two model names in your app.
+    </p>
+    <div class="filename">search.py</div>
+    <pre><code><span class="kw">import</span> math
+<span class="kw">import</span> os
+<span class="kw">from</span> openai <span class="kw">import</span> <span class="ty">OpenAI</span>
+
+client = <span class="ty">OpenAI</span>(base_url=<span class="st">"http://localhost:11434/v1"</span>, api_key=<span class="st">"ollama"</span>)
+EMBED_MODEL = <span class="st">"nomic-embed-text"</span>
+
+<span class="co"># OpenAI alternative — swap these two lines:</span>
+<span class="co"># client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))</span>
+<span class="co"># EMBED_MODEL = "text-embedding-3-small"</span>
+</code></pre>
+  </li>
+
+  <li>
+    <div class="step-title">The embed function</div>
+    <p>
+      <code>client.embeddings.create()</code> returns a response with a <code>data</code> list.
+      Each item has an <code>embedding</code> field — a plain Python <code>list[float]</code>.
+    </p>
+    <div class="filename">search.py</div>
+    <pre><code><span class="kw">def</span> <span class="fn">embed</span>(text: str) -> list[float]:
+    response = client.embeddings.create(model=EMBED_MODEL, input=text)
+    <span class="kw">return</span> response.data[<span class="nu">0</span>].embedding
+</code></pre>
+    <div class="callout callout-python">
+      <p class="callout-title python">🐍 Python nugget — list[float] as a type hint</p>
+      <p>
+        <code>list[float]</code> means "a list where every element is a float."
+        Available since Python 3.9 — before that you needed <code>from typing import List</code> and <code>List[float]</code>.
+        At runtime Python doesn't enforce this; it's for type checkers (<code>mypy</code>) and IDE autocomplete.
+      </p>
+    </div>
+  </li>
+
+  <li>
+    <div class="step-title">Cosine similarity</div>
+    <p>
+      Measures the angle between two vectors. Returns 1.0 (identical direction) to -1.0 (opposite).
+      For text embeddings expect ~0.2 (unrelated) to ~0.98 (near-duplicate).
+    </p>
+    <div class="filename">search.py</div>
+    <pre><code><span class="kw">def</span> <span class="fn">cosine_similarity</span>(a: list[float], b: list[float]) -> float:
+    dot = <span class="fn">sum</span>(x * y <span class="kw">for</span> x, y <span class="kw">in</span> <span class="fn">zip</span>(a, b))
+    norm_a = math.<span class="fn">sqrt</span>(<span class="fn">sum</span>(x * x <span class="kw">for</span> x <span class="kw">in</span> a))
+    norm_b = math.<span class="fn">sqrt</span>(<span class="fn">sum</span>(y * y <span class="kw">for</span> y <span class="kw">in</span> b))
+    <span class="kw">return</span> dot / (norm_a * norm_b)
+</code></pre>
+    <div class="callout callout-python">
+      <p class="callout-title python">🐍 Python nugget — zip() and generator expressions</p>
+      <p>
+        <code>zip(a, b)</code> pairs elements from two iterables: <code>zip([1,2,3], [4,5,6])</code>
+        yields <code>(1,4), (2,5), (3,6)</code>. Stops at the shorter one.
+        Replaces index-based <code>for i in range(len(a))</code> loops.
+      </p>
+      <p>
+        <code>x * y for x, y in zip(a, b)</code> is a <strong>generator expression</strong> — like a list
+        comprehension but lazy (doesn't allocate the full list). <code>sum()</code> consumes it in one pass.
+      </p>
+    </div>
+  </li>
+
+  <li>
+    <div class="step-title">A small document store</div>
+    <p>
+      Hard-code a few invoice snippets. In the next lesson (RAG) this becomes a real file store.
+    </p>
+    <div class="filename">search.py</div>
+    <pre><code>DOCS = [
+    <span class="st">"Invoice #1001 from Acme Corp — €500 for consulting. Status: paid."</span>,
+    <span class="st">"Invoice #1002 from Beta Ltd — €1,200 for software licences. Status: overdue."</span>,
+    <span class="st">"Invoice #1003 from Gamma GmbH — €350 for hardware maintenance. Status: paid."</span>,
+    <span class="st">"Invoice #1004 from Delta SA — €8,400 for annual support contract. Status: overdue."</span>,
+    <span class="st">"Credit note #CN-01 issued to Beta Ltd for €200 — duplicate charge refund."</span>,
+]
+
+doc_embeddings = [<span class="fn">embed</span>(doc) <span class="kw">for</span> doc <span class="kw">in</span> DOCS]
+</code></pre>
+    <div class="callout callout-python">
+      <p class="callout-title python">🐍 Python nugget — list comprehension</p>
+      <p>
+        <code>[f(x) for x in items]</code> builds a new list by applying <code>f</code> to every element —
+        more idiomatic than a for-loop with <code>.append()</code>.
+        You can filter too: <code>[f(x) for x in items if condition(x)]</code>.
+      </p>
+      <p>
+        Here it embeds all documents in one line. The result is a <code>list[list[float]]</code> —
+        a list of vectors.
+      </p>
+    </div>
+  </li>
+
+  <li>
+    <div class="step-title">The search function</div>
+    <p>
+      Embed the query, score every document against it, return the top <code>k</code> ranked by score.
+    </p>
+    <div class="filename">search.py</div>
+    <pre><code><span class="kw">def</span> <span class="fn">search</span>(query: str, top_k: int = <span class="nu">3</span>) -> list[tuple[str, float]]:
+    query_vec = <span class="fn">embed</span>(query)
+    scores = [<span class="fn">cosine_similarity</span>(query_vec, dv) <span class="kw">for</span> dv <span class="kw">in</span> doc_embeddings]
+    ranked = <span class="fn">sorted</span>(<span class="fn">zip</span>(DOCS, scores), key=<span class="kw">lambda</span> pair: pair[<span class="nu">1</span>], reverse=<span class="cm">True</span>)
+    <span class="kw">return</span> ranked[:top_k]
+</code></pre>
+    <div class="callout callout-python">
+      <p class="callout-title python">🐍 Python nugget — sorted() with key=</p>
+      <p>
+        <code>sorted(iterable, key=fn)</code> sorts by the value <code>fn(item)</code> returns.
+        <code>reverse=True</code> flips to descending.
+        The <code>lambda pair: pair[1]</code> extracts the score from each <code>(doc, score)</code> tuple.
+      </p>
+      <p>
+        <strong>Gotcha:</strong> <code>sorted()</code> returns a <em>new</em> list and never mutates the original.
+        <code>list.sort()</code> is in-place and returns <code>None</code>.
+        Writing <code>result = my_list.sort()</code> is a common bug — <code>result</code> will be <code>None</code>.
+      </p>
+    </div>
+  </li>
+
+  <li>
+    <div class="step-title">Run it</div>
+    <div class="filename">search.py</div>
+    <pre><code><span class="kw">if</span> __name__ == <span class="st">"__main__"</span>:
+    queries = [
+        <span class="st">"Which invoices are unpaid?"</span>,
+        <span class="st">"Any credit notes issued?"</span>,
+        <span class="st">"Large contracts over €5,000?"</span>,
+    ]
+
+    <span class="kw">for</span> query <span class="kw">in</span> queries:
+        <span class="fn">print</span>(<span class="st">f"\nQuery: {query}"</span>)
+        <span class="kw">for</span> doc, score <span class="kw">in</span> <span class="fn">search</span>(query, top_k=<span class="nu">2</span>):
+            <span class="fn">print</span>(<span class="st">f"  [{score:.3f}] {doc}"</span>)
+</code></pre>
+    <pre><code>cd invoice-extractor/lesson_004
+python search.py</code></pre>
+    <p>
+      Overdue invoices should rank highest for "unpaid",
+      the credit note for "credit notes", and the large contract for "€5,000".
+      Scores below ~0.6 are usually noise for short texts.
+    </p>
+  </li>
+
+</ul>
+
+<hr class="divider" />
+
+<!-- ── WHERE THIS FITS ─────────────────────────────────── -->
+<h2>Where this fits — the RAG pipeline</h2>
+
+<p>
+  What you just built is the <strong>retrieval step</strong> of RAG. Here's the full picture:
+</p>
+
+<!-- SVG 3: RAG pipeline -->
+<div class="fig">
+  <svg viewBox="0 0 760 200" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+    <rect width="760" height="200" fill="#1a1d27"/>
+
+    <!-- ── Index phase (top row) ── -->
+    <text x="30" y="24" fill="#475569" font-size="10.5" font-weight="600" letter-spacing="0.08em">INDEX PHASE (once, at startup)</text>
+
+    <!-- Docs box -->
+    <rect x="28" y="34" width="90" height="36" rx="6" fill="#22263a" stroke="#2e3250" stroke-width="1.5"/>
+    <text x="73" y="57" fill="#94a3b8" font-size="11" text-anchor="middle">📄 docs</text>
+
+    <line x1="118" y1="52" x2="140" y2="52" stroke="#2e3250" stroke-width="1.5"/>
+    <polygon points="138,47 146,52 138,57" fill="#2e3250"/>
+
+    <!-- Embed box (highlighted — this is what we built) -->
+    <rect x="140" y="34" width="90" height="36" rx="6" fill="#1e2d4a" stroke="#6c8ef7" stroke-width="2"/>
+    <text x="185" y="57" fill="#6c8ef7" font-size="11" text-anchor="middle" font-weight="600">embed()</text>
+
+    <line x1="230" y1="52" x2="252" y2="52" stroke="#2e3250" stroke-width="1.5"/>
+    <polygon points="250,47 258,52 250,57" fill="#2e3250"/>
+
+    <!-- Vector store box -->
+    <rect x="252" y="34" width="110" height="36" rx="6" fill="#22263a" stroke="#2e3250" stroke-width="1.5"/>
+    <text x="307" y="57" fill="#94a3b8" font-size="11" text-anchor="middle">🗃 vector store</text>
+
+    <!-- ── Query phase (bottom row) ── -->
+    <text x="30" y="110" fill="#475569" font-size="10.5" font-weight="600" letter-spacing="0.08em">QUERY PHASE (per request)</text>
+
+    <!-- User query -->
+    <rect x="28" y="120" width="90" height="36" rx="6" fill="#22263a" stroke="#2e3250" stroke-width="1.5"/>
+    <text x="73" y="143" fill="#94a3b8" font-size="11" text-anchor="middle">💬 query</text>
+
+    <line x1="118" y1="138" x2="140" y2="138" stroke="#2e3250" stroke-width="1.5"/>
+    <polygon points="138,133 146,138 138,143" fill="#2e3250"/>
+
+    <!-- Embed (highlighted) -->
+    <rect x="140" y="120" width="90" height="36" rx="6" fill="#1e2d4a" stroke="#6c8ef7" stroke-width="2"/>
+    <text x="185" y="143" fill="#6c8ef7" font-size="11" text-anchor="middle" font-weight="600">embed()</text>
+
+    <line x1="230" y1="138" x2="252" y2="138" stroke="#2e3250" stroke-width="1.5"/>
+    <polygon points="250,133 258,138 250,143" fill="#2e3250"/>
+
+    <!-- Search (highlighted — this is what we built) -->
+    <rect x="252" y="120" width="110" height="36" rx="6" fill="#1e2d4a" stroke="#6c8ef7" stroke-width="2"/>
+    <text x="307" y="143" fill="#6c8ef7" font-size="11" text-anchor="middle" font-weight="600">search() ← you built this</text>
+
+    <line x1="362" y1="138" x2="384" y2="138" stroke="#2e3250" stroke-width="1.5"/>
+    <polygon points="382,133 390,138 382,143" fill="#2e3250"/>
+
+    <!-- Top-K docs -->
+    <rect x="384" y="120" width="90" height="36" rx="6" fill="#22263a" stroke="#2e3250" stroke-width="1.5"/>
+    <text x="429" y="143" fill="#94a3b8" font-size="11" text-anchor="middle">top-k docs</text>
+
+    <line x1="474" y1="138" x2="496" y2="138" stroke="#2e3250" stroke-width="1.5"/>
+    <polygon points="494,133 502,138 494,143" fill="#2e3250"/>
+
+    <!-- LLM box (next lesson) -->
+    <rect x="496" y="120" width="90" height="36" rx="6" fill="#0d1e14" stroke="#4ade80" stroke-width="1.5" stroke-dasharray="5,3"/>
+    <text x="541" y="139" fill="#4ade80" font-size="11" text-anchor="middle">🤖 LLM</text>
+    <text x="541" y="152" fill="#4ade80" font-size="9" text-anchor="middle">next lesson</text>
+
+    <line x1="586" y1="138" x2="608" y2="138" stroke="#2e3250" stroke-width="1.5"/>
+    <polygon points="606,133 614,138 606,143" fill="#2e3250"/>
+
+    <!-- Answer -->
+    <rect x="608" y="120" width="90" height="36" rx="6" fill="#22263a" stroke="#2e3250" stroke-width="1.5"/>
+    <text x="653" y="143" fill="#94a3b8" font-size="11" text-anchor="middle">💡 answer</text>
+
+    <!-- vertical connector: vector store down to search -->
+    <line x1="307" y1="70" x2="307" y2="120" stroke="#2e3250" stroke-width="1.5" stroke-dasharray="4,3"/>
+    <polygon points="302,118 307,126 312,118" fill="#2e3250"/>
+
+    <!-- "lesson 04" label under the highlighted boxes -->
+    <rect x="128" y="175" width="248" height="18" rx="4" fill="#1e2d4a" stroke="#6c8ef7" stroke-width="1"/>
+    <text x="252" y="187" fill="#6c8ef7" font-size="10" text-anchor="middle" font-weight="600">← what you built in Lesson 04 →</text>
+  </svg>
+  <p class="fig-caption">Embeddings power both phases. The vector store replaces your in-memory list in production.</p>
+</div>
+
+<hr class="divider" />
+
+<!-- ── CHALLENGE ───────────────────────────────────────── -->
+<h2>Challenge</h2>
+
+<p>
+  Add a 6th document about something completely unrelated (a recipe, a sports result — anything).
+  Search for "outstanding payment" and verify the unrelated doc scores below 0.4.
+</p>
+<p>
+  Then try: what happens to scores if you make two documents nearly identical?
+  What's the minimum score at which you'd reject a result as "no match"?
+</p>
+
+<div class="callout callout-warn">
+  <p class="callout-title warn">Embedding models are not interchangeable</p>
+  <p>
+    If you embed documents with <code>nomic-embed-text</code> and query with
+    <code>text-embedding-3-small</code>, the similarity scores are meaningless garbage.
+    <strong>Always embed queries and documents with the same model.</strong>
+    If you switch models, re-embed everything.
+  </p>
+</div>
+
+<hr class="divider" />
+
+<h2>What's next</h2>
+<ul>
+  <li><strong>Lesson 05 — RAG pipeline:</strong> plug this search into a chat loop — retrieve, inject as context, answer</li>
+  <li><strong>Vector stores:</strong> <a href="https://www.trychroma.com" target="_blank">ChromaDB</a> and <a href="https://qdrant.tech" target="_blank">Qdrant</a> replace the in-memory list for production</li>
+  <li><strong>Chunking:</strong> long documents must be split before embedding — chunk size is a key tunable</li>
+</ul>
+
+<hr class="divider" />
+
+<div class="footer">
+  <p>Lesson 04 · AI Engineering ·
+    <a href="https://platform.openai.com/docs/guides/embeddings" target="_blank">OpenAI Embeddings Docs</a> ·
+    <a href="https://ollama.com/library/nomic-embed-text" target="_blank">nomic-embed-text on Ollama</a>
+  </p>
+  <div class="ask-me">
+    Questions? Ask your agent — it's your teacher.<br/>
+    <em>Try: "What's the difference between cosine similarity and dot product?" or "When would I use a vector store instead of this list?"</em>
+  </div>
+</div>
+
+</body>
+</html>

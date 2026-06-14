@@ -15,6 +15,15 @@
   - Days 31–60: RAG + tool calling
   - Days 61–90: evaluations + deployment
 - Always show working code they can run immediately
+- Include **Python nuggets** in every lesson — explicit callout boxes for Python gotchas/idioms, not hidden in code comments. User wants to pick up Python patterns naturally while learning AI engineering.
+- **Providers: Ollama + OpenAI only** — skip Anthropic API for now. Build all examples around these two.
+
+## Expressed Learning Interests
+
+- Transformer architecture internals (attention mechanism, Q/K/V matrices)
+- Tokens — how text is split, why token count ≠ word count
+- Context windows — how they relate to embeddings of long documents
+- Full pipeline: text → tokenise → token embeddings → transformer layers → pooling → final vector
 
 ## Article Used as Roadmap
 

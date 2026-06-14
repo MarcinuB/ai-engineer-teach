@@ -1,0 +1,809 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Reference — Embeddings Deep Dive</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3250;
+      --accent: #6c8ef7;
+      --accent2: #a78bfa;
+      --green: #4ade80;
+      --yellow: #fbbf24;
+      --red: #f87171;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --code-bg: #12141e;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 48px 24px 96px;
+    }
+
+    h1 { font-size: 1.8rem; font-weight: 700; letter-spacing: -0.02em; color: #fff; margin-bottom: 0.3rem; }
+    h2 { font-size: 1.1rem; font-weight: 700; color: var(--accent); margin: 2.2rem 0 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; font-size: 0.8rem; }
+    h3 { font-size: 1rem; font-weight: 600; color: var(--text); margin: 1.2rem 0 0.4rem; }
+    p  { color: var(--muted); margin-bottom: 0.8rem; font-size: 0.92rem; }
+    strong { color: var(--text); }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 1.8rem 0; }
+    .subtitle { color: var(--muted); font-size: 0.88rem; margin-bottom: 2rem; }
+
+    pre, code {
+      font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+    }
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 18px;
+      overflow-x: auto;
+      margin: 0.5rem 0 1rem;
+      font-size: 0.82rem;
+      line-height: 1.6;
+    }
+    p code, li code {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 1px 5px;
+      border-radius: 4px;
+      font-size: 0.82em;
+      color: var(--accent2);
+    }
+
+    /* Q&A cards */
+    .qa {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      margin-bottom: 12px;
+      overflow: hidden;
+    }
+    .qa-q {
+      padding: 14px 18px;
+      font-weight: 600;
+      font-size: 0.92rem;
+      color: var(--text);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      gap: 10px;
+    }
+    .qa-q::before {
+      content: "Q";
+      color: var(--accent);
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .qa-a {
+      padding: 14px 18px;
+      font-size: 0.88rem;
+      color: var(--muted);
+      display: flex;
+      gap: 10px;
+    }
+    .qa-a::before {
+      content: "A";
+      color: var(--green);
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+    .qa-a p { margin: 0 0 0.5rem; font-size: 0.88rem; }
+    .qa-a p:last-child { margin: 0; }
+    .qa-a > div { flex: 1; }
+
+    /* Key insight boxes */
+    .insight {
+      background: #1e2d4a;
+      border-left: 3px solid var(--accent);
+      border-radius: 0 8px 8px 0;
+      padding: 12px 16px;
+      margin: 1rem 0;
+      font-size: 0.88rem;
+    }
+    .insight strong { color: var(--accent); }
+
+    /* Score table */
+    table { width: 100%; border-collapse: collapse; margin: 0.8rem 0 1rem; font-size: 0.85rem; }
+    th {
+      background: var(--surface2); color: var(--muted);
+      text-align: left; padding: 8px 12px;
+      font-weight: 600; font-size: 0.72rem; letter-spacing: 0.05em; text-transform: uppercase;
+    }
+    td { padding: 8px 12px; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.85rem; }
+    td:first-child { color: var(--text); font-weight: 500; font-family: monospace; }
+    tr:hover td { background: var(--surface); }
+
+    /* Worked example box */
+    .worked {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 18px 22px;
+      margin: 0.8rem 0 1rem;
+      font-size: 0.85rem;
+    }
+    .worked-step {
+      display: flex;
+      gap: 14px;
+      margin-bottom: 12px;
+      align-items: flex-start;
+    }
+    .worked-step:last-child { margin-bottom: 0; }
+    .worked-num {
+      background: var(--surface2);
+      color: var(--accent);
+      font-weight: 700;
+      font-size: 0.75rem;
+      min-width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .worked-label { color: var(--muted); font-size: 0.8rem; margin-bottom: 3px; }
+    .worked-expr { color: var(--text); font-family: monospace; }
+    .worked-result { color: var(--green); font-family: monospace; font-weight: 600; }
+
+    /* Cluster SVG figure */
+    .fig {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 6px;
+      margin: 0.8rem 0 1rem;
+      overflow: hidden;
+    }
+    .fig svg { display: block; width: 100%; height: auto; }
+    .fig-caption {
+      text-align: center; font-size: 0.72rem;
+      color: var(--muted); padding: 6px 12px 4px;
+      font-style: italic;
+    }
+
+    /* Dimension bar */
+    .dim-bars { margin: 0.6rem 0 1rem; }
+    .dim-row {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 8px; font-size: 0.82rem;
+    }
+    .dim-label { color: var(--muted); min-width: 220px; font-family: monospace; }
+    .dim-bar {
+      height: 10px; border-radius: 5px;
+      background: var(--accent); opacity: 0.7;
+    }
+    .dim-val { color: var(--muted); font-size: 0.78rem; }
+
+    ul { padding-left: 1.4rem; margin-bottom: 0.8rem; }
+    li { color: var(--muted); margin-bottom: 5px; font-size: 0.88rem; }
+    li strong { color: var(--text); }
+
+    .tag {
+      display: inline-block;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: 4px; padding: 1px 7px;
+      font-size: 0.7rem; font-weight: 600; color: var(--muted);
+      margin-right: 4px; vertical-align: middle;
+    }
+    .tag.future { border-color: var(--accent2); color: var(--accent2); background: #1a1030; }
+
+    @media print {
+      body { background: white; color: black; padding: 20px; }
+      .qa { border: 1px solid #ccc; }
+      .insight { background: #f0f4ff; border-left-color: #4466cc; }
+    }
+  </style>
+</head>
+<body>
+
+<p class="subtitle">Reference · Lesson 04 supplement · 2026-06-13</p>
+<h1>Embeddings — Deep Dive</h1>
+<p>Key questions and answers from the lesson discussion. For quick refresh, not re-learning from scratch.</p>
+
+<hr class="divider" />
+
+<!-- ── SECTION 1: What embeddings are ── -->
+<h2>What embeddings are</h2>
+
+<div class="qa">
+  <div class="qa-q">What is an embedding?</div>
+  <div class="qa-a"><div>
+    <p>A fixed-length list of floats (768–3072 numbers) that encodes the <strong>semantic meaning</strong> of text. Produced by passing text through a transformer model. The numbers are meaningless individually — only their relationships matter.</p>
+    <p>Texts with similar meaning → similar vectors (small angle between them). Different topics → vectors far apart.</p>
+  </div></div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">How does "unpaid" match "overdue" when neither word appears in the other document?</div>
+  <div class="qa-a"><div>
+    <p>Embedding models are trained on billions of documents. "Unpaid" and "overdue" appear in nearly identical surrounding contexts (payment reminders, accounting docs). The model pushes their vectors together because <strong>words that appear in the same contexts get similar vectors</strong> — not because anyone taught it they're synonyms.</p>
+    <p>This is why semantic search beats keyword search: it retrieves by concept, not spelling.</p>
+  </div></div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">How does the model encode a whole sentence, not just individual words?</div>
+  <div class="qa-a"><div>
+    <p>Transformer models use <strong>attention</strong>: every token looks at every other token before producing its representation. The word "overdue" in <em>"Invoice is overdue"</em> is influenced by "Invoice" and "pay" — so it ends up in a different part of the space than "overdue" in <em>"Our meeting is long overdue"</em>.</p>
+    <p>The model outputs one final vector per input that's a compressed summary of the whole meaning — not a per-word average.</p>
+  </div></div>
+</div>
+
+<!-- ── SECTION 2: Cosine similarity worked example ── -->
+<hr class="divider" />
+<h2>Cosine similarity — worked example</h2>
+
+<p>Using 2D vectors for clarity. Real embeddings have 768 dimensions but the formula is identical.</p>
+
+<pre>A = [1, 2]   → "invoice overdue Poland"
+B = [2, 4]   → "unpaid invoice Warsaw"  (same direction, scaled)
+C = [2, 1]   → "recipe for pierogi"     (different direction)</pre>
+
+<div class="worked">
+  <div class="worked-step">
+    <div class="worked-num">1</div>
+    <div>
+      <div class="worked-label">Dot product — sum(x×y for x,y in zip(a,b))</div>
+      <div class="worked-expr">A·B = (1×2) + (2×4) = 2 + 8 = <span class="worked-result">10</span></div>
+      <div class="worked-expr">A·C = (1×2) + (2×1) = 2 + 2 = <span class="worked-result">4</span></div>
+    </div>
+  </div>
+  <div class="worked-step">
+    <div class="worked-num">2</div>
+    <div>
+      <div class="worked-label">Norms — sqrt(sum(x² for x in a))</div>
+      <div class="worked-expr">|A| = √(1²+2²) = √5  ≈ <span class="worked-result">2.236</span></div>
+      <div class="worked-expr">|B| = √(2²+4²) = √20 ≈ <span class="worked-result">4.472</span></div>
+      <div class="worked-expr">|C| = √(2²+1²) = √5  ≈ <span class="worked-result">2.236</span></div>
+    </div>
+  </div>
+  <div class="worked-step">
+    <div class="worked-num">3</div>
+    <div>
+      <div class="worked-label">Divide — dot / (norm_a × norm_b)</div>
+      <div class="worked-expr">cosine(A,B) = 10 / (2.236 × 4.472) = 10/10.0 = <span class="worked-result">1.0</span>  ← identical direction</div>
+      <div class="worked-expr">cosine(A,C) =  4 / (2.236 × 2.236) =  4/5.0  = <span class="worked-result">0.8</span>  ← different direction</div>
+    </div>
+  </div>
+</div>
+
+<div class="insight">
+  <strong>Why not just use dot product?</strong> Longer documents have larger magnitude vectors. Without dividing by the norms, a long document would dominate similarity scores even if it's less relevant. Normalising makes it a fair comparison — only direction counts.
+</div>
+
+<!-- Real results -->
+<h3>Real results — "overdue" in different contexts</h3>
+<p>Measured with <code>nomic-embed-text</code>, reference sentence: <em>"Invoice is overdue. Please pay."</em></p>
+
+<table>
+  <thead><tr><th>Score</th><th>Sentence</th><th>Why</th></tr></thead>
+  <tbody>
+    <tr><td>1.000</td><td>Invoice is overdue. Please pay.</td><td>Same sentence</td></tr>
+    <tr><td>0.760</td><td>Invoice #1002 from Beta Ltd. Status: overdue.</td><td>Same domain, same concept</td></tr>
+    <tr><td>0.662</td><td>Our meeting is long overdue.</td><td>Shares word, different context</td></tr>
+    <tr><td>0.646</td><td>The library book is overdue.</td><td>Shares word, different context</td></tr>
+  </tbody>
+</table>
+
+<p>The 0.114 gap between 0.760 and 0.662 is significant — a threshold of 0.70 would correctly filter out the non-financial sentences.</p>
+
+<h3>Practical score thresholds (nomic-embed-text, short texts)</h3>
+<table>
+  <thead><tr><th>Score</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td>&gt; 0.85</td><td>Near-duplicate or same concept</td></tr>
+    <tr><td>0.70–0.85</td><td>Same domain, related meaning</td></tr>
+    <tr><td>0.50–0.70</td><td>Shares a concept, different context</td></tr>
+    <tr><td>&lt; 0.50</td><td>Probably unrelated</td></tr>
+  </tbody>
+</table>
+<p>These shift with model, text length, and domain. Calibrate on your own data.</p>
+
+<!-- ── SECTION 3: Clusters ── -->
+<hr class="divider" />
+<h2>Clusters and embedding space</h2>
+
+<div class="qa">
+  <div class="qa-q">What is a "cluster" — is it a physical region in the vector database?</div>
+  <div class="qa-a"><div>
+    <p>Yes, exactly. Each embedding is a point in N-dimensional space. A cluster is a region of that space where similar documents happen to land — not because anyone drew a boundary, but because they emerged from training.</p>
+    <p>The geometry works the same as 2D: nearby points = similar meaning, distant points = different meaning. Cosine similarity measures the angle from the origin, which is equivalent to asking "are these points in the same region?"</p>
+  </div></div>
+</div>
+
+<div class="fig">
+  <svg viewBox="0 0 560 220" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+    <rect width="560" height="220" fill="#1a1d27"/>
+
+    <!-- Finance cluster -->
+    <ellipse cx="390" cy="90" rx="110" ry="65" fill="none" stroke="#6c8ef7" stroke-width="1" stroke-dasharray="5,4" opacity="0.5"/>
+    <text x="390" y="28" fill="#6c8ef7" font-size="11" text-anchor="middle" opacity="0.7">finance cluster</text>
+    <circle cx="355" cy="80" r="5" fill="#6c8ef7" opacity="0.8"/>
+    <text x="363" y="84" fill="#94a3b8" font-size="10">invoice overdue</text>
+    <circle cx="400" cy="68" r="5" fill="#f87171" opacity="0.85"/>
+    <text x="408" y="72" fill="#94a3b8" font-size="10">unpaid invoice</text>
+    <circle cx="370" cy="108" r="5" fill="#6c8ef7" opacity="0.8"/>
+    <text x="378" y="112" fill="#94a3b8" font-size="10">VAT statement</text>
+    <circle cx="415" cy="95" r="5" fill="#6c8ef7" opacity="0.8"/>
+    <text x="423" y="99" fill="#94a3b8" font-size="10">payment reminder</text>
+
+    <!-- Scheduling cluster -->
+    <ellipse cx="160" cy="70" rx="80" ry="48" fill="none" stroke="#a78bfa" stroke-width="1" stroke-dasharray="5,4" opacity="0.5"/>
+    <text x="160" y="22" fill="#a78bfa" font-size="11" text-anchor="middle" opacity="0.7">scheduling cluster</text>
+    <circle cx="135" cy="65" r="5" fill="#a78bfa" opacity="0.8"/>
+    <text x="143" y="69" fill="#94a3b8" font-size="10">meeting overdue</text>
+    <circle cx="165" cy="82" r="5" fill="#a78bfa" opacity="0.8"/>
+    <text x="173" y="86" fill="#94a3b8" font-size="10">calendar invite</text>
+
+    <!-- Cooking cluster -->
+    <ellipse cx="130" cy="168" rx="75" ry="38" fill="none" stroke="#4ade80" stroke-width="1" stroke-dasharray="5,4" opacity="0.5"/>
+    <text x="130" y="130" fill="#4ade80" font-size="11" text-anchor="middle" opacity="0.7">cooking cluster</text>
+    <circle cx="100" cy="165" r="5" fill="#4ade80" opacity="0.8"/>
+    <text x="108" y="169" fill="#94a3b8" font-size="10">pierogi recipe</text>
+    <circle cx="150" cy="175" r="5" fill="#4ade80" opacity="0.8"/>
+    <text x="158" y="179" fill="#94a3b8" font-size="10">baking guide</text>
+
+    <!-- Query point -->
+    <circle cx="340" cy="58" r="7" fill="none" stroke="#fbbf24" stroke-width="2"/>
+    <circle cx="340" cy="58" r="3" fill="#fbbf24"/>
+    <text x="294" y="47" fill="#fbbf24" font-size="10" font-weight="600">query: "unpaid invoices"</text>
+    <line x1="340" y1="65" x2="357" y2="76" stroke="#fbbf24" stroke-width="1" stroke-dasharray="3,2" opacity="0.6"/>
+    <line x1="340" y1="65" x2="398" y2="70" stroke="#fbbf24" stroke-width="1" stroke-dasharray="3,2" opacity="0.6"/>
+
+    <!-- Fuzzy boundary note -->
+    <circle cx="255" cy="118" r="5" fill="#a78bfa" opacity="0.5"/>
+    <text x="263" y="122" fill="#475569" font-size="10">"library book overdue" — sits between clusters (score 0.646)</text>
+  </svg>
+  <p class="fig-caption">Clusters are regions of N-dimensional space. Boundaries are fuzzy — some documents sit between clusters.</p>
+</div>
+
+<!-- ── SECTION 4: Dimensions & attention heads ── -->
+<hr class="divider" />
+<h2>Why 768 dimensions / attention heads</h2>
+
+<div class="qa">
+  <div class="qa-q">Why 768 dimensions specifically?</div>
+  <div class="qa-a"><div>
+    <p>Design choice from BERT (2018): <strong>12 attention heads × 64 dimensions each = 768</strong>. It worked well, got published, and became the default most models copied. Same reason HTTP uses port 80 — someone picked it, it stuck.</p>
+    <p>More dimensions = more capacity for nuance, but more memory and slower search. 768 hits an empirical sweet spot. Going to 10,000 dimensions would likely perform worse due to the curse of dimensionality (everything starts looking equally far apart).</p>
+  </div></div>
+</div>
+
+<div class="dim-bars">
+  <div class="dim-row">
+    <div class="dim-label">nomic-embed-text (Ollama)</div>
+    <div class="dim-bar" style="width:120px"></div>
+    <div class="dim-val">768</div>
+  </div>
+  <div class="dim-row">
+    <div class="dim-label">text-embedding-3-small (OpenAI)</div>
+    <div class="dim-bar" style="width:180px"></div>
+    <div class="dim-val">1536</div>
+  </div>
+  <div class="dim-row">
+    <div class="dim-label">text-embedding-3-large (OpenAI)</div>
+    <div class="dim-bar" style="width:360px"></div>
+    <div class="dim-val">3072</div>
+  </div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">What are attention heads?</div>
+  <div class="qa-a"><div>
+    <p>Attention is the mechanism where each word "looks at" every other word to decide how much to borrow from them. A single head can only learn one type of relationship at a time, so 12 heads run in parallel — each learning to specialise in something different:</p>
+    <pre>Head 1  → syntactic structure  (subject → verb → object)
+Head 2  → financial entities   (Invoice, Beta Ltd cluster)
+Head 3  → payment status words (overdue, paid, outstanding)
+Head 4  → negation             ("not paid" vs "paid")
+...     → emerged from training, not manually assigned</pre>
+    <p>Each head works in a 64-dimensional subspace. After all 12 run in parallel, their outputs are concatenated back into 768 dimensions — 12 different "perspectives" stitched together.</p>
+  </div></div>
+</div>
+
+<div class="qa">
+  <div class="qa-q">What about domain-specialised models (e.g. coding)?</div>
+  <div class="qa-a"><div>
+    <p>A specialised model is <strong>not</strong> a slice of a general model's space. It's a completely separately trained model — same 768 dimensions — but trained predominantly on domain data (GitHub, Stack Overflow, docs). The space is denser in that domain and sparse in others:</p>
+    <pre>General model:    finance ████  cooking ████  code ████  medicine ████
+Code model:       code ████████████  finance ██  cooking █</pre>
+    <p>The attention heads learned finer distinctions within the domain (<code>async def</code> vs <code>def</code>, Python vs JavaScript) because that's what the training data rewarded.</p>
+    <p><strong>Use specialised models</strong> when your documents are mostly in one domain and retrieval precision matters. They'll perform poorly outside that domain.</p>
+  </div></div>
+</div>
+
+<!-- ── SECTION 5: Images & multimodal ── -->
+<hr class="divider" />
+<h2>Images, text-to-image &amp; multimodal models</h2>
+
+<div class="qa">
+  <div class="qa-q">How do images get embedded? Is it the same as text?</div>
+  <div class="qa-a"><div>
+    <p>Same process, different input. Instead of splitting text into word tokens, an image is split into <strong>patches</strong> (small fixed-size squares, e.g. 14×14 pixels). Each patch becomes a token. Those patch tokens go through a transformer — each patch attends to every other patch — and you get one vector out.</p>
+    <pre>text:  "invoice overdue"  → word tokens  → transformer → [768 floats]
+image: photo.jpg          → patches      → transformer → [768 floats]</pre>
+    <p>Same output shape. The architecture is identical once you've tokenised the input.</p>
+  </div></div>
+</div>
+
+<!-- SVG: image patch tokenisation -->
+<div class="fig">
+  <svg viewBox="0 0 640 200" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+    <rect width="640" height="200" fill="#1a1d27"/>
+
+    <!-- Image grid (6x4 patches) -->
+    <text x="76" y="20" fill="#475569" font-size="10.5" text-anchor="middle">image.jpg</text>
+    <g stroke="#2e3250" stroke-width="1">
+      <!-- outer border -->
+      <rect x="28" y="28" width="96" height="64" fill="#22263a" rx="3"/>
+      <!-- grid lines vertical -->
+      <line x1="44"  y1="28" x2="44"  y2="92"/>
+      <line x1="60"  y1="28" x2="60"  y2="92"/>
+      <line x1="76"  y1="28" x2="76"  y2="92"/>
+      <line x1="92"  y1="28" x2="92"  y2="92"/>
+      <line x1="108" y1="28" x2="108" y2="92"/>
+      <!-- grid lines horizontal -->
+      <line x1="28"  y1="44" x2="124" y2="44"/>
+      <line x1="28"  y1="60" x2="124" y2="60"/>
+      <line x1="28"  y1="76" x2="124" y2="76"/>
+    </g>
+    <!-- highlight one patch -->
+    <rect x="60" y="44" width="16" height="16" fill="#6c8ef7" opacity="0.4" stroke="#6c8ef7" stroke-width="1.5"/>
+    <text x="76" y="110" fill="#475569" font-size="9.5" text-anchor="middle">6×4 = 24 patches</text>
+    <text x="76" y="122" fill="#475569" font-size="9.5" text-anchor="middle">(each 14×14 px)</text>
+
+    <!-- arrow -->
+    <line x1="128" y1="60" x2="168" y2="60" stroke="#2e3250" stroke-width="1.5"/>
+    <polygon points="166,55 174,60 166,65" fill="#2e3250"/>
+    <text x="148" y="52" fill="#475569" font-size="9.5" text-anchor="middle">split into</text>
+    <text x="148" y="73" fill="#475569" font-size="9.5" text-anchor="middle">tokens</text>
+
+    <!-- Patch tokens -->
+    <text x="246" y="20" fill="#475569" font-size="10.5" text-anchor="middle">patch tokens</text>
+    <g fill="#22263a" stroke="#2e3250" stroke-width="1">
+      <rect x="178" y="28" width="28" height="28" rx="4"/>
+      <rect x="210" y="28" width="28" height="28" rx="4"/>
+      <rect x="242" y="28" width="28" height="28" rx="4"/>
+      <rect x="274" y="28" width="28" height="28" rx="4"/>
+      <rect x="178" y="60" width="28" height="28" rx="4"/>
+      <rect x="210" y="60" width="28" height="28" rx="4"/>
+    </g>
+    <!-- highlighted token -->
+    <rect x="242" y="28" width="28" height="28" rx="4" fill="#1e2d4a" stroke="#6c8ef7" stroke-width="1.5"/>
+    <text x="256" y="104" fill="#475569" font-size="9" text-anchor="middle">... 18 more</text>
+
+    <!-- arrow to transformer -->
+    <line x1="314" y1="60" x2="354" y2="60" stroke="#2e3250" stroke-width="1.5"/>
+    <polygon points="352,55 360,60 352,65" fill="#2e3250"/>
+
+    <!-- Transformer box -->
+    <rect x="354" y="30" width="100" height="58" rx="6" fill="#1e2d4a" stroke="#6c8ef7" stroke-width="1.5"/>
+    <text x="404" y="54" fill="#6c8ef7" font-size="11" text-anchor="middle" font-weight="600">transformer</text>
+    <text x="404" y="70" fill="#6c8ef7" font-size="10" text-anchor="middle">(attention)</text>
+
+    <!-- arrow to output -->
+    <line x1="454" y1="60" x2="490" y2="60" stroke="#2e3250" stroke-width="1.5"/>
+    <polygon points="488,55 496,60 488,65" fill="#2e3250"/>
+
+    <!-- Output vector -->
+    <text x="562" y="20" fill="#475569" font-size="10.5" text-anchor="middle">embedding</text>
+    <g fill="#22263a" stroke="#2e3250" stroke-width="1">
+      <rect x="494" y="28" width="12" height="64" rx="2"/>
+      <rect x="508" y="28" width="12" height="64" rx="2"/>
+      <rect x="522" y="28" width="12" height="64" rx="2"/>
+      <rect x="536" y="28" width="12" height="64" rx="2"/>
+      <rect x="550" y="28" width="12" height="64" rx="2"/>
+      <rect x="564" y="28" width="12" height="64" rx="2"/>
+      <rect x="578" y="28" width="12" height="64" rx="2"/>
+    </g>
+    <!-- filled bars to look like values -->
+    <rect x="494" y="60" width="12" height="32" rx="2" fill="#6c8ef7" opacity="0.5"/>
+    <rect x="508" y="34" width="12" height="58" rx="2" fill="#6c8ef7" opacity="0.5"/>
+    <rect x="522" y="50" width="12" height="42" rx="2" fill="#6c8ef7" opacity="0.5"/>
+    <rect x="536" y="40" width="12" height="52" rx="2" fill="#6c8ef7" opacity="0.5"/>
+    <rect x="550" y="55" width="12" height="37" rx="2" fill="#6c8ef7" opacity="0.5"/>
+    <rect x="564" y="44" width="12" height="48" rx="2" fill="#6c8ef7" opacity="0.5"/>
+    <rect x="578" y="62" width="12" height="30" rx="2" fill="#6c8ef7" opacity="0.5"/>
+    <text x="562" y="108" fill="#475569" font-size="9.5" text-anchor="middle">[768 floats]</text>
+    <text x="562" y="120" fill="#475569" font-size="9.5" text-anchor="middle">one per image</text>
+  </svg>
+  <p class="fig-caption">Image → patches → transformer → one 768-float vector. Same architecture as text, different tokenisation.</p>
+</div>
+
+<div class="qa">
+  <div class="qa-q">What is CLIP and why does it matter?</div>
+  <div class="qa-a"><div>
+    <p>
+      CLIP (OpenAI, 2021) trained a model on 400M image-text pairs from the web. It learned to embed images and text into the <strong>same vector space</strong>, so similar concepts land near each other regardless of modality.
+    </p>
+    <pre>"a dog running on a beach"  →  [0.23, -0.81, ...]
+photo of dog on beach       →  [0.21, -0.79, ...]  ← close
+photo of an invoice         →  [-0.4,  0.12, ...]  ← far</pre>
+    <p>This enables text→image search: embed the query text, find images with the nearest vectors. Also the foundation of text-to-image generation.</p>
+  </div></div>
+</div>
+
+<!-- SVG: CLIP shared space -->
+<div class="fig">
+  <svg viewBox="0 0 620 220" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+    <rect width="620" height="220" fill="#1a1d27"/>
+
+    <!-- Shared space background -->
+    <ellipse cx="390" cy="118" rx="200" ry="88" fill="#1e2d4a" stroke="#6c8ef7" stroke-width="1" stroke-dasharray="6,4" opacity="0.4"/>
+    <text x="390" y="28" fill="#6c8ef7" font-size="11" text-anchor="middle" opacity="0.6">shared vector space</text>
+
+    <!-- Text encoder -->
+    <rect x="28" y="50" width="110" height="36" rx="6" fill="#22263a" stroke="#2e3250" stroke-width="1.5"/>
+    <text x="83" y="73" fill="#94a3b8" font-size="11" text-anchor="middle">📝 text encoder</text>
+
+    <!-- Image encoder -->
+    <rect x="28" y="130" width="110" height="36" rx="6" fill="#22263a" stroke="#2e3250" stroke-width="1.5"/>
+    <text x="83" y="153" fill="#94a3b8" font-size="11" text-anchor="middle">🖼 image encoder</text>
+
+    <!-- Arrows into space -->
+    <line x1="138" y1="68" x2="260" y2="100" stroke="#2e3250" stroke-width="1.5"/>
+    <polygon points="255,96 263,103 257,108" fill="#2e3250"/>
+
+    <line x1="138" y1="148" x2="260" y2="130" stroke="#2e3250" stroke-width="1.5"/>
+    <polygon points="255,124 264,130 256,136" fill="#2e3250"/>
+
+    <!-- Points in shared space: dog cluster -->
+    <circle cx="310" cy="88"  r="6" fill="#4ade80" opacity="0.9"/>
+    <text x="318" y="86"  fill="#4ade80" font-size="10">"dog on beach" (text)</text>
+    <circle cx="322" cy="108" r="6" fill="#4ade80" opacity="0.7"/>
+    <text x="330" y="112" fill="#4ade80" font-size="10">🖼 dog_beach.jpg</text>
+    <ellipse cx="316" cy="98" rx="32" ry="22" fill="none" stroke="#4ade80" stroke-width="1" stroke-dasharray="3,3" opacity="0.4"/>
+
+    <!-- Points in shared space: invoice cluster -->
+    <circle cx="460" cy="108" r="6" fill="#a78bfa" opacity="0.9"/>
+    <text x="468" y="106" fill="#a78bfa" font-size="10">"overdue invoice" (text)</text>
+    <circle cx="450" cy="128" r="6" fill="#a78bfa" opacity="0.7"/>
+    <text x="458" y="132" fill="#a78bfa" font-size="10">🖼 invoice_scan.jpg</text>
+    <ellipse cx="455" cy="118" rx="36" ry="24" fill="none" stroke="#a78bfa" stroke-width="1" stroke-dasharray="3,3" opacity="0.4"/>
+
+    <!-- CLIP label -->
+    <rect x="28" y="182" width="200" height="22" rx="4" fill="#12141e" stroke="#2e3250" stroke-width="1"/>
+    <text x="128" y="196" fill="#475569" font-size="10" text-anchor="middle">CLIP: trained on 400M image-text pairs</text>
+  </svg>
+  <p class="fig-caption">CLIP maps text and images into the same space. Similar concepts cluster together regardless of modality.</p>
+</div>
+
+<div class="qa">
+  <div class="qa-q">How does text-to-image generation work? (Stable Diffusion, DALL-E)</div>
+  <div class="qa-a"><div>
+    <p>These are <strong>generative</strong> models, not embedding models. The core idea is diffusion — gradually removing noise from a random image, guided at every step by a text vector.</p>
+    <ol style="padding-left: 1.2rem; margin-top: 0.5rem;">
+      <li style="margin-bottom: 6px;">Text prompt → encode into a vector (CLIP-like)</li>
+      <li style="margin-bottom: 6px;">Start with a completely random noise image</li>
+      <li style="margin-bottom: 6px;">Run ~20–50 denoising steps — at each step, nudge the image to look more like what the text vector describes</li>
+      <li>Coherent image emerges</li>
+    </ol>
+    <p style="margin-top:0.5rem">The text vector acts as a compass: <em>"make this noise look more like a dog on a beach."</em> The model never "draws" — it denoises.</p>
+  </div></div>
+</div>
+
+<!-- SVG: diffusion process -->
+<div class="fig">
+  <svg viewBox="0 0 660 170" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+    <rect width="660" height="170" fill="#1a1d27"/>
+
+    <!-- Text prompt -->
+    <rect x="20" y="60" width="110" height="36" rx="6" fill="#22263a" stroke="#2e3250" stroke-width="1.5"/>
+    <text x="75" y="79" fill="#94a3b8" font-size="10.5" text-anchor="middle">"a dog running</text>
+    <text x="75" y="91" fill="#94a3b8" font-size="10.5" text-anchor="middle">on a beach"</text>
+
+    <line x1="130" y1="78" x2="148" y2="78" stroke="#2e3250" stroke-width="1.5"/>
+    <polygon points="146,73 154,78 146,83" fill="#2e3250"/>
+
+    <!-- Text vector -->
+    <rect x="152" y="60" width="72" height="36" rx="6" fill="#1e2d4a" stroke="#6c8ef7" stroke-width="1.5"/>
+    <text x="188" y="79" fill="#6c8ef7" font-size="10" text-anchor="middle">text</text>
+    <text x="188" y="91" fill="#6c8ef7" font-size="10" text-anchor="middle">vector</text>
+
+    <!-- downward arrow to guide -->
+    <line x1="188" y1="96" x2="188" y2="130" stroke="#6c8ef7" stroke-width="1.5" stroke-dasharray="3,3"/>
+    <text x="194" y="120" fill="#475569" font-size="9">guides</text>
+
+    <!-- Noise image -->
+    <text x="268" y="26" fill="#475569" font-size="9.5" text-anchor="middle">pure noise</text>
+    <rect x="236" y="34" width="64" height="64" rx="4" fill="#22263a" stroke="#2e3250" stroke-width="1.5"/>
+    <!-- noise pattern -->
+    <g opacity="0.6">
+      <rect x="240" y="38" width="8" height="8" fill="#f87171" opacity="0.3"/>
+      <rect x="252" y="38" width="8" height="8" fill="#6c8ef7" opacity="0.4"/>
+      <rect x="264" y="38" width="8" height="8" fill="#4ade80" opacity="0.2"/>
+      <rect x="276" y="38" width="8" height="8" fill="#fbbf24" opacity="0.5"/>
+      <rect x="288" y="38" width="8" height="8" fill="#a78bfa" opacity="0.3"/>
+      <rect x="240" y="50" width="8" height="8" fill="#4ade80" opacity="0.4"/>
+      <rect x="252" y="50" width="8" height="8" fill="#fbbf24" opacity="0.3"/>
+      <rect x="264" y="50" width="8" height="8" fill="#f87171" opacity="0.5"/>
+      <rect x="276" y="50" width="8" height="8" fill="#6c8ef7" opacity="0.2"/>
+      <rect x="288" y="50" width="8" height="8" fill="#4ade80" opacity="0.6"/>
+      <rect x="240" y="62" width="8" height="8" fill="#fbbf24" opacity="0.4"/>
+      <rect x="252" y="62" width="8" height="8" fill="#a78bfa" opacity="0.5"/>
+      <rect x="264" y="62" width="8" height="8" fill="#6c8ef7" opacity="0.3"/>
+      <rect x="276" y="62" width="8" height="8" fill="#f87171" opacity="0.4"/>
+      <rect x="288" y="62" width="8" height="8" fill="#fbbf24" opacity="0.2"/>
+    </g>
+
+    <!-- step arrow -->
+    <line x1="304" y1="66" x2="326" y2="66" stroke="#2e3250" stroke-width="1.5"/>
+    <polygon points="324,61 332,66 324,71" fill="#2e3250"/>
+    <text x="314" y="56" fill="#fbbf24" font-size="9" text-anchor="middle">step 1</text>
+
+    <!-- Partially denoised -->
+    <text x="380" y="26" fill="#475569" font-size="9.5" text-anchor="middle">step 20</text>
+    <rect x="348" y="34" width="64" height="64" rx="4" fill="#22263a" stroke="#2e3250" stroke-width="1.5"/>
+    <g opacity="0.5">
+      <rect x="352" y="38" width="8" height="8" fill="#4ade80" opacity="0.2"/>
+      <rect x="364" y="38" width="8" height="8" fill="#4ade80" opacity="0.3"/>
+      <rect x="376" y="38" width="8" height="8" fill="#fbbf24" opacity="0.4"/>
+    </g>
+    <!-- emerging shape suggestion -->
+    <ellipse cx="380" cy="70" rx="16" ry="10" fill="#94a3b8" opacity="0.15"/>
+    <ellipse cx="380" cy="58" rx="8"  ry="8"  fill="#94a3b8" opacity="0.12"/>
+
+    <!-- step arrow -->
+    <line x1="416" y1="66" x2="438" y2="66" stroke="#2e3250" stroke-width="1.5"/>
+    <polygon points="436,61 444,66 436,71" fill="#2e3250"/>
+    <text x="428" y="56" fill="#fbbf24" font-size="9" text-anchor="middle">step 50</text>
+
+    <!-- Final image (dog silhouette suggestion) -->
+    <text x="492" y="26" fill="#475569" font-size="9.5" text-anchor="middle">final image</text>
+    <rect x="460" y="34" width="64" height="64" rx="4" fill="#1a2a3a" stroke="#4ade80" stroke-width="1.5"/>
+    <!-- simple dog silhouette made of shapes -->
+    <ellipse cx="492" cy="72" rx="18" ry="10" fill="#4ade80" opacity="0.25"/>
+    <ellipse cx="492" cy="60" rx="10" ry="10" fill="#4ade80" opacity="0.25"/>
+    <line x1="480" y1="80" x2="478" y2="92" stroke="#4ade80" stroke-width="2.5" opacity="0.3"/>
+    <line x1="488" y1="82" x2="486" y2="94" stroke="#4ade80" stroke-width="2.5" opacity="0.3"/>
+    <line x1="496" y1="82" x2="498" y2="94" stroke="#4ade80" stroke-width="2.5" opacity="0.3"/>
+    <line x1="504" y1="80" x2="506" y2="92" stroke="#4ade80" stroke-width="2.5" opacity="0.3"/>
+
+    <text x="492" y="112" fill="#4ade80" font-size="9" text-anchor="middle">🐕</text>
+
+    <!-- bottom label -->
+    <text x="380" y="148" fill="#475569" font-size="10" text-anchor="middle">model never "draws" — it denoises, guided at every step by the text vector</text>
+  </svg>
+  <p class="fig-caption">Diffusion: start with noise, denoise step-by-step. The text vector steers every step.</p>
+</div>
+
+<div class="qa">
+  <div class="qa-q">How do multimodal LLMs work? (GPT-4o, LLaVA, Claude)</div>
+  <div class="qa-a"><div>
+    <p>These take both text and images as input in the same conversation. The trick: project image patches into the <strong>text token embedding space</strong>, then feed everything to a normal LLM.</p>
+    <ol style="padding-left: 1.2rem; margin-top: 0.5rem;">
+      <li style="margin-bottom: 6px;">Image → split into patches → visual token embeddings (via vision encoder)</li>
+      <li style="margin-bottom: 6px;">Project visual tokens into text token space (learned linear layer)</li>
+      <li style="margin-bottom: 6px;">Concatenate: <code>[visual tokens] + [text tokens]</code></li>
+      <li>Feed into a standard LLM transformer — image is just more tokens</li>
+    </ol>
+    <p style="margin-top: 0.5rem">The model doesn't "see" an image — it sees a sequence of <em>visual tokens</em> mixed with text tokens, and attends across all of them.</p>
+  </div></div>
+</div>
+
+<!-- SVG: multimodal token mixing -->
+<div class="fig">
+  <svg viewBox="0 0 660 195" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+    <rect width="660" height="195" fill="#1a1d27"/>
+
+    <!-- Image input -->
+    <text x="55" y="20" fill="#475569" font-size="10.5" text-anchor="middle">image</text>
+    <rect x="20" y="28" width="70" height="55" rx="4" fill="#1a2a3a" stroke="#4ade80" stroke-width="1.5"/>
+    <text x="55" y="60" fill="#4ade80" font-size="22" text-anchor="middle">🖼</text>
+
+    <line x1="90" y1="55" x2="110" y2="55" stroke="#2e3250" stroke-width="1.5"/>
+    <polygon points="108,50 116,55 108,60" fill="#2e3250"/>
+
+    <!-- Vision encoder -->
+    <rect x="110" y="34" width="88" height="42" rx="6" fill="#22263a" stroke="#2e3250" stroke-width="1.5"/>
+    <text x="154" y="56" fill="#94a3b8" font-size="10" text-anchor="middle">vision encoder</text>
+    <text x="154" y="68" fill="#94a3b8" font-size="9" text-anchor="middle">+ projection</text>
+
+    <line x1="198" y1="55" x2="218" y2="55" stroke="#2e3250" stroke-width="1.5"/>
+    <polygon points="216,50 224,55 216,60" fill="#2e3250"/>
+
+    <!-- Visual tokens -->
+    <text x="272" y="20" fill="#4ade80" font-size="10" text-anchor="middle">visual tokens</text>
+    <g fill="#1a2a14" stroke="#4ade80" stroke-width="1.2">
+      <rect x="222" y="28" width="24" height="24" rx="3"/>
+      <rect x="250" y="28" width="24" height="24" rx="3"/>
+      <rect x="278" y="28" width="24" height="24" rx="3"/>
+      <rect x="306" y="28" width="24" height="24" rx="3"/>
+    </g>
+    <text x="272" y="64" fill="#4ade80" font-size="9" text-anchor="middle">patch₁ patch₂ patch₃ …</text>
+
+    <!-- Text input -->
+    <text x="55" y="105" fill="#475569" font-size="10.5" text-anchor="middle">text</text>
+    <rect x="20" y="113" width="70" height="36" rx="4" fill="#22263a" stroke="#6c8ef7" stroke-width="1.5"/>
+    <text x="55" y="136" fill="#6c8ef7" font-size="10.5" text-anchor="middle">"what's in</text>
+    <text x="55" y="148" fill="#6c8ef7" font-size="10.5" text-anchor="middle">this image?"</text>
+
+    <line x1="90" y1="131" x2="196" y2="90" stroke="#2e3250" stroke-width="1.5"/>
+    <polygon points="191,86 199,92 193,97" fill="#2e3250"/>
+
+    <!-- Text tokens -->
+    <text x="272" y="105" fill="#6c8ef7" font-size="10" text-anchor="middle">text tokens</text>
+    <g fill="#1e2d4a" stroke="#6c8ef7" stroke-width="1.2">
+      <rect x="222" y="113" width="24" height="24" rx="3"/>
+      <rect x="250" y="113" width="24" height="24" rx="3"/>
+      <rect x="278" y="113" width="24" height="24" rx="3"/>
+      <rect x="306" y="113" width="24" height="24" rx="3"/>
+    </g>
+    <text x="272" y="150" fill="#6c8ef7" font-size="9" text-anchor="middle">"what's"  "in"  "this"  "image?"</text>
+
+    <!-- concat arrow -->
+    <line x1="334" y1="52" x2="370" y2="80" stroke="#2e3250" stroke-width="1.5"/>
+    <line x1="334" y1="125" x2="370" y2="95" stroke="#2e3250" stroke-width="1.5"/>
+    <polygon points="364,77 372,83 366,88" fill="#2e3250"/>
+    <polygon points="365,97 373,91 369,85" fill="#2e3250"/>
+    <text x="350" y="76" fill="#475569" font-size="9">concat</text>
+
+    <!-- Combined token sequence -->
+    <text x="450" y="20" fill="#475569" font-size="10" text-anchor="middle">combined token sequence</text>
+    <g>
+      <rect x="374" y="60" width="20" height="50" rx="3" fill="#1a2a14" stroke="#4ade80" stroke-width="1.2"/>
+      <rect x="397" y="60" width="20" height="50" rx="3" fill="#1a2a14" stroke="#4ade80" stroke-width="1.2"/>
+      <rect x="420" y="60" width="20" height="50" rx="3" fill="#1a2a14" stroke="#4ade80" stroke-width="1.2"/>
+      <rect x="443" y="60" width="20" height="50" rx="3" fill="#1a2a14" stroke="#4ade80" stroke-width="1.2"/>
+      <rect x="466" y="60" width="20" height="50" rx="3" fill="#1e2d4a" stroke="#6c8ef7" stroke-width="1.2"/>
+      <rect x="489" y="60" width="20" height="50" rx="3" fill="#1e2d4a" stroke="#6c8ef7" stroke-width="1.2"/>
+      <rect x="512" y="60" width="20" height="50" rx="3" fill="#1e2d4a" stroke="#6c8ef7" stroke-width="1.2"/>
+      <rect x="535" y="60" width="20" height="50" rx="3" fill="#1e2d4a" stroke="#6c8efff" stroke-width="1.2"/>
+    </g>
+    <text x="384" y="122" fill="#4ade80" font-size="8" text-anchor="middle">img</text>
+    <text x="407" y="122" fill="#4ade80" font-size="8" text-anchor="middle">img</text>
+    <text x="430" y="122" fill="#4ade80" font-size="8" text-anchor="middle">img</text>
+    <text x="453" y="122" fill="#4ade80" font-size="8" text-anchor="middle">img</text>
+    <text x="476" y="122" fill="#6c8ef7" font-size="8" text-anchor="middle">txt</text>
+    <text x="499" y="122" fill="#6c8ef7" font-size="8" text-anchor="middle">txt</text>
+    <text x="522" y="122" fill="#6c8ef7" font-size="8" text-anchor="middle">txt</text>
+    <text x="545" y="122" fill="#6c8ef7" font-size="8" text-anchor="middle">txt</text>
+
+    <!-- arrow to LLM -->
+    <line x1="558" y1="85" x2="578" y2="85" stroke="#2e3250" stroke-width="1.5"/>
+    <polygon points="576,80 584,85 576,90" fill="#2e3250"/>
+
+    <rect x="582" y="66" width="60" height="38" rx="6" fill="#22263a" stroke="#2e3250" stroke-width="1.5"/>
+    <text x="612" y="85" fill="#94a3b8" font-size="10" text-anchor="middle">🤖 LLM</text>
+    <text x="612" y="97" fill="#94a3b8" font-size="9" text-anchor="middle">(normal)</text>
+
+    <text x="330" y="178" fill="#475569" font-size="10" text-anchor="middle">image patches are just more tokens — the LLM architecture doesn't change</text>
+  </svg>
+  <p class="fig-caption">Multimodal LLMs concatenate visual tokens and text tokens, then run a standard transformer. The image is not special — it's just tokens.</p>
+</div>
+
+<div class="insight">
+  <strong>The through-line across all of this:</strong> everything reduces to "get inputs into a shared vector space, then run transformer attention over them." Text, images, audio (Whisper tokenises audio spectrograms the same way) — the architecture is the same once you've solved how to tokenise each modality. This is why multimodal AI is moving fast: adding a new modality is mostly a tokenisation problem, not an architecture redesign.
+</div>
+
+<!-- ── SECTION 6: Coming up ── -->
+<hr class="divider" />
+<h2>Topics to explore later <span class="tag future">upcoming</span></h2>
+
+<ul>
+  <li><strong>Transformer architecture in depth</strong> — self-attention mechanism, Q/K/V matrices, positional encoding</li>
+  <li><strong>Tokens</strong> — how text is split before embedding, why token count ≠ word count, tokenizer quirks</li>
+  <li><strong>Context windows</strong> — how many tokens a model can "see" at once and how that affects embeddings of long documents</li>
+  <li><strong>How tokens → vectors</strong> — the journey from raw text to embedding: tokenise → token embeddings → transformer layers → pooling → final vector</li>
+  <li><strong>RAG evaluation</strong> — measuring retrieval quality (precision@k, recall@k), not just vibes</li>
+</ul>
+
+<hr class="divider" />
+<p style="text-align:center; font-size:0.75rem; color: var(--muted);">
+  Reference · AI Engineering · Supplement to Lesson 04
+</p>
+
+</body>
+</html>

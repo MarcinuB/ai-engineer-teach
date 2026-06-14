@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lesson 05 — RAG Pipeline</title>
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --border: #2e3250;
+      --accent: #6c8ef7;
+      --accent2: #a78bfa;
+      --green: #4ade80;
+      --yellow: #fbbf24;
+      --red: #f87171;
+      --text: #e2e8f0;
+      --muted: #94a3b8;
+      --code-bg: #12141e;
+      --python: #facc15;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.7;
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 48px 24px 96px;
+    }
+
+    h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.02em; color: #fff; }
+    h2 { font-size: 1.3rem; font-weight: 600; color: var(--accent); margin: 2.5rem 0 0.8rem; }
+    h3 { font-size: 1rem; font-weight: 600; color: var(--text); margin: 1.5rem 0 0.5rem; }
+    p  { color: var(--muted); margin-bottom: 1rem; }
+    strong { color: var(--text); }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    .lesson-meta { display: flex; gap: 12px; align-items: center; margin-bottom: 2rem; }
+    .lesson-badge {
+      background: var(--accent); color: #0f1117;
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.08em;
+      padding: 3px 10px; border-radius: 999px; text-transform: uppercase;
+    }
+    .lesson-num { color: var(--muted); font-size: 0.85rem; }
+    .divider { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+
+    pre {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 24px;
+      overflow-x: auto;
+      margin: 0.6rem 0 1.2rem;
+      font-size: 0.85rem;
+      line-height: 1.6;
+    }
+    code {
+      font-family: "JetBrains Mono", "Fira Code", "Cascadia Code", monospace;
+      color: var(--text);
+    }
+    p code, li code, td code {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      padding: 1px 6px;
+      border-radius: 4px;
+      font-size: 0.82em;
+      color: var(--accent2);
+    }
+
+    .kw  { color: #818cf8; }
+    .fn  { color: #60a5fa; }
+    .st  { color: #86efac; }
+    .co  { color: #475569; font-style: italic; }
+    .nu  { color: #fb923c; }
+    .ty  { color: #a78bfa; }
+    .cm  { color: #fbbf24; }
+
+    /* Callouts */
+    .callout { border-radius: 8px; padding: 14px 18px; margin: 1rem 0 1.5rem; font-size: 0.88rem; }
+    .callout-info   { background: #1e2d4a; border-left: 3px solid var(--accent); }
+    .callout-warn   { background: #2a1f0a; border-left: 3px solid var(--yellow); }
+    .callout-tip    { background: #0d2918; border-left: 3px solid var(--green); }
+    .callout-python { background: #221f05; border-left: 3px solid var(--python); }
+    .callout p      { margin: 0 0 0.4rem; color: var(--text); }
+    .callout p:last-child { margin: 0; }
+    .callout-title  { font-weight: 700; margin-bottom: 6px; font-size: 0.75rem; letter-spacing: 0.05em; text-transform: uppercase; }
+    .callout-title.python { color: var(--python); }
+    .callout-title.tip    { color: var(--green); }
+    .callout-title.warn   { color: var(--yellow); }
+    .callout-title.info   { color: var(--accent); }
+
+    /* SVG figures */
+    .fig {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px;
+      margin: 1rem 0 1.5rem;
+      overflow: hidden;
+    }
+    .fig svg { display: block; width: 100%; height: auto; }
+    .fig-caption {
+      text-align: center; font-size: 0.75rem;
+      color: var(--muted); padding: 8px 12px 4px; font-style: italic;
+    }
+
+    /* Build steps */
+    .build-steps { counter-reset: bstep; padding: 0; list-style: none; margin: 1.2rem 0; }
+    .build-steps > li {
+      counter-increment: bstep;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px 24px 20px 70px;
+      position: relative;
+      margin-bottom: 14px;
+    }
+    .build-steps > li::before {
+      content: counter(bstep);
+      position: absolute; left: 20px; top: 20px;
+      width: 32px; height: 32px; border-radius: 50%;
+      background: var(--accent); color: #0f1117;
+      font-size: 0.85rem; font-weight: 700;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .build-steps > li > .step-title {
+      font-weight: 600; color: var(--text); margin-bottom: 8px; font-size: 0.95rem;
+    }
+    .build-steps > li p { margin-bottom: 0.7rem; }
+    .build-steps > li p:last-child { margin-bottom: 0; }
+
+    .filename {
+      font-size: 0.72rem; color: var(--muted); margin-bottom: -4px;
+      font-family: monospace; letter-spacing: 0.03em;
+    }
+
+    ul, ol { padding-left: 1.5rem; margin-bottom: 1rem; }
+    li { color: var(--muted); margin-bottom: 6px; }
+    li strong { color: var(--text); }
+
+    .challenge {
+      background: var(--surface);
+      border: 1px solid var(--accent2);
+      border-radius: 12px;
+      padding: 24px 28px;
+      margin: 2rem 0;
+    }
+    .challenge h2 { margin-top: 0; color: var(--accent2); }
+
+    .footer {
+      margin-top: 4rem; padding-top: 2rem;
+      border-top: 1px solid var(--border);
+      text-align: center; font-size: 0.8rem; color: var(--muted);
+    }
+    .ask-me {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; padding: 14px 20px;
+      display: inline-block; margin-top: 1rem; font-size: 0.85rem;
+    }
+  </style>
+</head>
+<body>
+
+<div class="lesson-meta">
+  <span class="lesson-badge">AI Engineering</span>
+  <span class="lesson-num">Lesson 05</span>
+</div>
+<h1>RAG Pipeline</h1>
+<p>Retrieve relevant documents, inject them as context, let the LLM answer from your data.</p>
+<hr class="divider" />
+
+<!-- ── WHAT CHANGES ── -->
+<h2>What changes from lesson 04</h2>
+
+<p>
+  In lesson 04 you built the <strong>retrieval</strong> step: embed a query, find the closest documents.
+  RAG adds one thing — you pass those documents to an LLM as context and ask it to answer from them.
+</p>
+
+<!-- Pipeline SVG -->
+<div class="fig">
+  <svg viewBox="0 0 760 210" xmlns="http://www.w3.org/2000/svg" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif">
+    <rect width="760" height="210" fill="#1a1d27"/>
+
+    <!-- Index phase -->
+    <text x="30" y="24" fill="#475569" font-size="10.5" font-weight="600" letter-spacing="0.08em">INDEX PHASE</text>
+
+    <rect x="28" y="34" width="80" height="36" rx="6" fill="#22263a" stroke="#2e3250" stroke-width="1.5"/>
+    <text x="68" y="57" fill="#94a3b8" font-size="11" text-anchor="middle">📄 .txt files</text>
+
+    <line x1="108" y1="52" x2="126" y2="52" stroke="#2e3250" stroke-width="1.5"/>
+    <polygon points="124,47 132,52 124,57" fill="#2e3250"/>
+
+    <rect x="126" y="34" width="80" height="36" rx="6" fill="#1e2d4a" stroke="#6c8ef7" stroke-width="1.5"/>
+    <text x="166" y="57" fill="#6c8ef7" font-size="11" text-anchor="middle">embed()</text>
+
+    <line x1="206" y1="52" x2="224" y2="52" stroke="#2e3250" stroke-width="1.5"/>
+    <polygon points="222,47 230,52 222,57" fill="#2e3250"/>
+
+    <rect x="224" y="34" width="100" height="36" rx="6" fill="#22263a" stroke="#2e3250" stroke-width="1.5"/>
+    <text x="274" y="57" fill="#94a3b8" font-size="11" text-anchor="middle">🗃 in-memory list</text>
+
+    <!-- Query phase -->
+    <text x="30" y="115" fill="#475569" font-size="10.5" font-weight="600" letter-spacing="0.08em">QUERY PHASE</text>
+
+    <rect x="28" y="125" width="80" height="36" rx="6" fill="#22263a" stroke="#2e3250" stroke-width="1.5"/>
+    <text x="68" y="148" fill="#94a3b8" font-size="11" text-anchor="middle">💬 query</text>
+
+    <line x1="108" y1="143" x2="126" y2="143" stroke="#2e3250" stroke-width="1.5"/>
+    <polygon points="124,138 132,143 124,148" fill="#2e3250"/>
+
+    <rect x="126" y="125" width="80" height="36" rx="6" fill="#1e2d4a" stroke="#6c8ef7" stroke-width="1.5"/>
+    <text x="166" y="148" fill="#6c8ef7" font-size="11" text-anchor="middle">embed()</text>
+
+    <line x1="206" y1="143" x2="224" y2="143" stroke="#2e3250" stroke-width="1.5"/>
+    <polygon points="222,138 230,143 222,148" fill="#2e3250"/>
+
+    <rect x="224" y="125" width="100" height="36" rx="6" fill="#1e2d4a" stroke="#6c8ef7" stroke-width="1.5"/>
+    <text x="274" y="148" fill="#6c8ef7" font-size="11" text-anchor="middle">search()</text>
+
+    <line x1="324" y1="143" x2="342" y2="143" stroke="#2e3250" stroke-width="1.5"/>
+    <polygon points="340,138 348,143 340,148" fill="#2e3250"/>
+
+    <rect x="342" y="125" width="88" height="36" rx="6" fill="#22263a" stroke="#2e3250" stroke-width="1.5"/>
+    <text x="386" y="148" fill="#94a3b8" font-size="11" text-anchor="middle">top-k docs</text>
+
+    <line x1="430" y1="143" x2="448" y2="143" stroke="#2e3250" stroke-width="1.5"/>
+    <polygon points="446,138 454,143 446,148" fill="#2e3250"/>
+
+    <!-- NEW: context injection box -->
+    <rect x="448" y="125" width="108" height="36" rx="6" fill="#1a2a14" stroke="#4ade80" stroke-width="2"/>
+    <text x="502" y="142" fill="#4ade80" font-size="11" text-anchor="middle" font-weight="600">inject into</text>
+    <text x="502" y="155" fill="#4ade80" font-size="11" text-anchor="middle" font-weight="600">system prompt</text>
+
+    <line x1="556" y1="143" x2="574" y2="143" stroke="#2e3250" stroke-width="1.5"/>
+    <polygon points="572,138 580,143 572,148" fill="#2e3250"/>
+
+    <rect x="574" y="125" width="68" height="36" rx="6" fill="#22263a" stroke="#2e3250" stroke-width="1.5"/>
+    <text x="608" y="148" fill="#94a3b8" font-size="11" text-anchor="middle">🤖 LLM</text>
+
+    <line x1="642" y1="143" x2="660" y2="143" stroke="#2e3250" stroke-width="1.5"/>
+    <polygon points="658,138 666,143 658,148" fill="#2e3250"/>
+
+    <rect x="660" y="125" width="72" height="36" rx="6" fill="#22263a" stroke="#2e3250" stroke-width="1.5"/>
+    <text x="696" y="148" fill="#94a3b8" font-size="11" text-anchor="middle">💡 answer</text>
+
+    <!-- vertical connector -->
+    <line x1="274" y1="70" x2="274" y2="125" stroke="#2e3250" stroke-width="1.5" stroke-dasharray="4,3"/>
+    <polygon points="269,123 274,131 279,123" fill="#2e3250"/>
+
+    <!-- "new in lesson 05" label -->
+    <rect x="436" y="175" width="232" height="18" rx="4" fill="#1a2a14" stroke="#4ade80" stroke-width="1"/>
+    <text x="552" y="187" fill="#4ade80" font-size="10" text-anchor="middle" font-weight="600">← new in Lesson 05 →</text>
+
+    <!-- "lesson 04" label -->
+    <rect x="114" y="175" width="212" height="18" rx="4" fill="#1e2d4a" stroke="#6c8ef7" stroke-width="1"/>
+    <text x="220" y="187" fill="#6c8ef7" font-size="10" text-anchor="middle" font-weight="600">← built in Lesson 04 →</text>
+  </svg>
+  <p class="fig-caption">RAG = Lesson 04's search + one new step: inject retrieved docs into the LLM's system prompt.</p>
+</div>
+
+<hr class="divider" />
+
+<!-- ── BUILD STEPS ── -->
+<h2>Build it — step by step</h2>
+<p>Create <code>invoice-extractor/lesson_005/rag.py</code>. Also create a <code>docs/</code> subfolder — that's where your source documents will live.</p>
+
+<ul class="build-steps">
+
+  <li>
+    <div class="step-title">Imports and clients</div>
+    <p>Two clients, two models — one for embeddings, one for chat. Common pattern in RAG apps.</p>
+    <div class="filename">rag.py</div>
+    <pre><code><span class="kw">import</span> math
+<span class="kw">import</span> os
+<span class="kw">from</span> pathlib <span class="kw">import</span> <span class="ty">Path</span>
+<span class="kw">from</span> openai <span class="kw">import</span> <span class="ty">OpenAI</span>
+
+client = <span class="ty">OpenAI</span>(base_url=<span class="st">"http://localhost:11434/v1"</span>, api_key=<span class="st">"ollama"</span>)
+EMBED_MODEL = <span class="st">"nomic-embed-text"</span>
+CHAT_MODEL  = <span class="st">"llama3.2"</span>
+</code></pre>
+    <div class="callout callout-python">
+      <p class="callout-title python">🐍 Python nugget — pathlib.Path</p>
+      <p>
+        <code>pathlib.Path</code> is the modern way to work with file paths — object-oriented,
+        cross-platform, and composable. Instead of <code>os.path.join("docs", "inv.txt")</code>
+        you write <code>Path("docs") / "inv.txt"</code>.
+        Key methods: <code>.read_text()</code>, <code>.write_text()</code>, <code>.glob("*.txt")</code>,
+        <code>.stem</code> (filename without extension), <code>.parent</code>.
+      </p>
+    </div>
+  </li>
+
+  <li>
+    <div class="step-title">Create your documents</div>
+    <p>
+      Create <code>lesson_005/docs/</code> and add three <code>.txt</code> files.
+      These are the documents your RAG will search over.
+    </p>
+    <div class="filename">docs/invoice_1002.txt</div>
+    <pre><code>Invoice #1002
+Client: Beta Ltd, London
+Amount: €1,200 net — software licences, annual subscription
+Issue date: 2026-05-01
+Due date: 2026-05-31
+Status: OVERDUE — no payment received as of 2026-06-13
+Contact: accounts@beta-ltd.co.uk
+</code></pre>
+    <div class="filename">docs/invoice_1004.txt</div>
+    <pre><code>Invoice #1004
+Client: Delta SA, Warsaw
+Amount: €8,400 net — annual infrastructure support contract
+Issue date: 2026-04-15
+Due date: 2026-05-15
+Status: OVERDUE — payment 29 days late
+Contact: finance@delta-sa.pl
+Note: Client requested 30-day extension by email on 2026-05-10. Not agreed.
+</code></pre>
+    <div class="filename">docs/credit_note_cn01.txt</div>
+    <pre><code>Credit Note #CN-01
+Issued to: Beta Ltd
+Amount: €200
+Reason: duplicate charge on Invoice #1001 — refunded 2026-05-20
+Net effect: Beta Ltd balance reduced by €200
+</code></pre>
+  </li>
+
+  <li>
+    <div class="step-title">Load and embed documents</div>
+    <p>
+      Read every <code>.txt</code> file from the <code>docs/</code> folder and embed its content.
+      Store the text alongside the embedding so you can return it to the LLM later.
+    </p>
+    <div class="filename">rag.py</div>
+    <pre><code><span class="kw">def</span> <span class="fn">embed</span>(text: str) -> list[float]:
+    response = client.embeddings.create(model=EMBED_MODEL, input=text)
+    <span class="kw">return</span> response.data[<span class="nu">0</span>].embedding
+
+<span class="kw">def</span> <span class="fn">cosine_similarity</span>(a: list[float], b: list[float]) -> float:
+    dot   = <span class="fn">sum</span>(x * y <span class="kw">for</span> x, y <span class="kw">in</span> <span class="fn">zip</span>(a, b))
+    norm_a = math.<span class="fn">sqrt</span>(<span class="fn">sum</span>(x * x <span class="kw">for</span> x <span class="kw">in</span> a))
+    norm_b = math.<span class="fn">sqrt</span>(<span class="fn">sum</span>(y * y <span class="kw">for</span> y <span class="kw">in</span> b))
+    <span class="kw">return</span> dot / (norm_a * norm_b)
+
+<span class="co"># Load every .txt file from the docs/ folder</span>
+DOCS_DIR = <span class="ty">Path</span>(__file__).parent / <span class="st">"docs"</span>
+
+docs = [p.read_text() <span class="kw">for</span> p <span class="kw">in</span> <span class="fn">sorted</span>(DOCS_DIR.<span class="fn">glob</span>(<span class="st">"*.txt"</span>))]
+doc_embeddings = [<span class="fn">embed</span>(doc) <span class="kw">for</span> doc <span class="kw">in</span> docs]
+
+<span class="fn">print</span>(<span class="st">f"Loaded {len(docs)} documents."</span>)
+</code></pre>
+    <div class="callout callout-python">
+      <p class="callout-title python">🐍 Python nugget — Path.glob() and Path.read_text()</p>
+      <p>
+        <code>Path.glob("*.txt")</code> returns an iterator of all <code>.txt</code> files in the directory.
+        Order is filesystem-dependent (not guaranteed alphabetical), so wrap in <code>sorted()</code>
+        to get consistent ordering.
+      </p>
+      <p>
+        <code>path.read_text()</code> reads the whole file as a string. Default encoding is platform-dependent —
+        in production, always pass <code>encoding="utf-8"</code> explicitly to avoid surprises on Windows.
+      </p>
+    </div>
+  </li>
+
+  <li>
+    <div class="step-title">Search function</div>
+    <p>Same as lesson 04, with a <strong>score threshold</strong> added — so low-relevance documents don't get passed to the LLM as fake context.</p>
+    <div class="filename">rag.py</div>
+    <pre><code><span class="kw">def</span> <span class="fn">search</span>(query: str, top_k: int = <span class="nu">2</span>, threshold: float = <span class="nu">0.5</span>) -> list[tuple[str, float]]:
+    query_vec = <span class="fn">embed</span>(query)
+    scores = [<span class="fn">cosine_similarity</span>(query_vec, dv) <span class="kw">for</span> dv <span class="kw">in</span> doc_embeddings]
+    ranked = <span class="fn">sorted</span>(<span class="fn">zip</span>(docs, scores), key=<span class="kw">lambda</span> p: p[<span class="nu">1</span>], reverse=<span class="cm">True</span>)
+    <span class="kw">return</span> [(doc, score) <span class="kw">for</span> doc, score <span class="kw">in</span> ranked[:top_k] <span class="kw">if</span> score >= threshold]
+</code></pre>
+  </li>
+
+  <li>
+    <div class="step-title">Context builder — the new piece</div>
+    <p>
+      Takes retrieved documents and formats them into a string you'll inject into the system prompt.
+      Numbered citations let the LLM refer back to specific sources.
+    </p>
+    <div class="filename">rag.py</div>
+    <pre><code><span class="kw">def</span> <span class="fn">build_context</span>(results: list[tuple[str, float]]) -> str:
+    <span class="kw">return</span> <span class="st">"\n\n"</span>.<span class="fn">join</span>(
+        <span class="st">f"[Document {i + 1}]\n{doc}"</span>
+        <span class="kw">for</span> i, (doc, score) <span class="kw">in</span> <span class="fn">enumerate</span>(results)
+    )
+</code></pre>
+    <div class="callout callout-python">
+      <p class="callout-title python">🐍 Python nugget — enumerate() and str.join()</p>
+      <p>
+        <code>enumerate(iterable)</code> yields <code>(index, value)</code> pairs:
+        <code>for i, val in enumerate(["a","b","c"])</code> gives <code>(0,"a"), (1,"b"), (2,"c")</code>.
+        Replaces <code>for i in range(len(...))</code> when you need both index and value.
+        Start from 1 with <code>enumerate(items, start=1)</code>.
+      </p>
+      <p>
+        <code>"\n\n".join(iterable)</code> concatenates strings with a double newline between each.
+        The separator goes <em>between</em> items, never at the start or end — so no trailing newline.
+        Passing a generator expression (not a list) is fine: <code>join()</code> accepts any iterable.
+      </p>
+    </div>
+  </li>
+
+  <li>
+    <div class="step-title">RAG query function — ties it all together</div>
+    <p>
+      Retrieve relevant docs, inject them as context, send to the LLM.
+      The system prompt instructs the model to answer <em>only</em> from the provided documents
+      and say so if the answer isn't there.
+    </p>
+    <div class="filename">rag.py</div>
+    <pre><code><span class="kw">def</span> <span class="fn">rag_query</span>(question: str) -> str:
+    results = <span class="fn">search</span>(question)
+
+    <span class="kw">if not</span> results:
+        <span class="kw">return</span> <span class="st">"I couldn't find any relevant documents to answer that question."</span>
+
+    context = <span class="fn">build_context</span>(results)
+
+    system_prompt = <span class="st">f"""You are an invoice assistant. Answer the user's question using ONLY \
+the documents provided below. If the answer is not in the documents, say so explicitly \
+— do not use your training knowledge.
+
+DOCUMENTS:
+{context}"""</span>
+
+    response = client.chat.completions.create(
+        model=CHAT_MODEL,
+        messages=[
+            {<span class="st">"role"</span>: <span class="st">"user"</span>, <span class="st">"content"</span>: question},
+        ],
+        extra_body={<span class="st">"system"</span>: system_prompt},
+    )
+    <span class="kw">return</span> response.choices[<span class="nu">0</span>].message.content
+</code></pre>
+
+    <div class="callout callout-warn">
+      <p class="callout-title warn">Passing the system prompt</p>
+      <p>
+        Different providers handle the system prompt differently. The standard OpenAI way
+        is to add <code>{"role": "system", "content": system_prompt}</code> as the <em>first message</em>
+        in the messages list — not as an <code>extra_body</code> field. Try this if <code>extra_body</code>
+        doesn't work with your provider:
+      </p>
+      <pre><code>messages=[
+    {<span class="st">"role"</span>: <span class="st">"system"</span>, <span class="st">"content"</span>: system_prompt},
+    {<span class="st">"role"</span>: <span class="st">"user"</span>,   <span class="st">"content"</span>: question},
+],</code></pre>
+    </div>
+  </li>
+
+  <li>
+    <div class="step-title">Run it</div>
+    <div class="filename">rag.py</div>
+    <pre><code><span class="kw">if</span> __name__ == <span class="st">"__main__"</span>:
+    questions = [
+        <span class="st">"Which invoices are overdue?"</span>,
+        <span class="st">"Did Beta Ltd receive any credit notes?"</span>,
+        <span class="st">"Has Delta SA responded to the overdue notice?"</span>,
+        <span class="st">"What is the weather in Warsaw today?"</span>,  <span class="co"># should say "not in documents"</span>
+    ]
+
+    <span class="kw">for</span> q <span class="kw">in</span> questions:
+        <span class="fn">print</span>(<span class="st">f"\nQ: {q}"</span>)
+        <span class="fn">print</span>(<span class="st">f"A: {rag_query(q)}"</span>)
+</code></pre>
+    <pre><code>cd invoice-extractor/lesson_005
+python rag.py</code></pre>
+    <p>
+      The last question ("weather in Warsaw") should return an "I don't know" — because no relevant
+      document was found above the 0.5 threshold. If the LLM still makes something up, tighten the
+      system prompt instruction.
+    </p>
+  </li>
+
+</ul>
+
+<hr class="divider" />
+
+<!-- ── CHALLENGE ── -->
+<div class="challenge">
+  <h2>Challenges</h2>
+
+  <p><strong>1. Show which documents were retrieved</strong></p>
+  <p>
+    Print the document filenames and scores before the answer — so you can see <em>why</em>
+    the LLM gave that response. Modify <code>rag_query</code> to also return the retrieved
+    sources, not just the answer.
+  </p>
+
+  <p style="margin-top: 1rem"><strong>2. Add a 4th document about something unrelated</strong></p>
+  <p>
+    Create <code>docs/company_picnic.txt</code> with a short event announcement.
+    Ask "When is the company picnic?" — it should be retrieved and answered correctly.
+    Then ask an invoice question and verify the picnic doc scores low and doesn't pollute the context.
+  </p>
+
+  <p style="margin-top: 1rem"><strong>3. Try a hallucination</strong></p>
+  <p>
+    Remove the "only use the documents" instruction from the system prompt. Ask a question that
+    isn't in any document. Watch the LLM confidently invent an answer. Then put the instruction back.
+    This is the core reason the system prompt matters in RAG.
+  </p>
+</div>
+
+<hr class="divider" />
+
+<!-- ── WHAT'S NEXT ── -->
+<h2>What's next</h2>
+<ul>
+  <li><strong>Chunking:</strong> long documents need to be split into chunks before embedding — the full file may exceed the embedding model's token limit, and smaller chunks give more precise retrieval</li>
+  <li><strong>Vector stores:</strong> ChromaDB or Qdrant replace the in-memory list — they persist embeddings to disk and support millions of documents</li>
+  <li><strong>Multi-turn RAG:</strong> maintain a conversation history so follow-up questions work ("what about the other one?")</li>
+</ul>
+
+<div class="callout callout-info">
+  <p class="callout-title info">What you've now built</p>
+  <p>
+    A working RAG system — project #2 from the mission. It's basic (in-memory, no chunking, no
+    persistence) but the architecture is real. Every production RAG system is this loop with better
+    infrastructure around it.
+  </p>
+</div>
+
+<hr class="divider" />
+
+<div class="footer">
+  <p>Lesson 05 · AI Engineering ·
+    <a href="https://platform.openai.com/docs/guides/embeddings" target="_blank">OpenAI Embeddings</a> ·
+    <a href="https://www.trychroma.com" target="_blank">ChromaDB</a> ·
+    <a href="https://qdrant.tech" target="_blank">Qdrant</a>
+  </p>
+  <div class="ask-me">
+    Questions? Ask your agent — it's your teacher.<br/>
+    <em>Try: "How do I handle documents longer than the embedding model's token limit?" or "Show me multi-turn RAG"</em>
+  </div>
+</div>
+
+</body>
+</html>
