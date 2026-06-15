@@ -27,7 +27,6 @@
 - [Latent Space / AI Engineer Foundation](https://www.latent.space) — Podcast + community for AI engineers. High quality practitioners.
 - [Hugging Face Discord](https://discord.gg/huggingface) — Large community, good for model questions.
 
-## Gaps
-
-- Need a good resource specifically on RAG evaluation (retrieval quality metrics)
-- Need a resource on LLM-as-judge evaluation patterns
+### Evaluation
+- [RAGAS Docs](https://docs.ragas.io) — RAG evaluation framework. Implements faithfulness, answer relevance, context relevance metrics. Good reference for extending the hand-built eval harness from lesson 7.
+- [LLM-as-a-Judge (Zheng et al., 2023)](https://arxiv.org/abs/2306.05685) — Original paper establishing LLM-as-judge as a scalable evaluation pattern. Covers agreement with human raters and prompt design for judges.

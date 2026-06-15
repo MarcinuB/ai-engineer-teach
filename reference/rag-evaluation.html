@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>RAG Evaluation — Reference</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #fafaf9;
+    --surface: #ffffff;
+    --border: #e5e5e3;
+    --text: #1a1a18;
+    --text-muted: #6b6b67;
+    --accent: #5b4cf5;
+    --accent-soft: #ede9fe;
+    --green: #166534;
+    --green-soft: #dcfce7;
+    --orange: #92400e;
+    --orange-soft: #fef3c7;
+    --blue: #1e40af;
+    --blue-soft: #dbeafe;
+    --red: #991b1b;
+    --red-soft: #fee2e2;
+    --code-bg: #1e1e2e;
+    --code-text: #cdd6f4;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    font-size: 15px;
+    line-height: 1.6;
+    color: var(--text);
+    background: var(--bg);
+    padding: 2rem;
+  }
+
+  .page { max-width: 900px; margin: 0 auto; }
+
+  header {
+    margin-bottom: 2.5rem;
+    padding-bottom: 1.5rem;
+    border-bottom: 2px solid var(--border);
+  }
+  header h1 { font-size: 2rem; font-weight: 700; letter-spacing: -0.03em; }
+  header p { color: var(--text-muted); margin-top: 0.4rem; font-size: 0.9rem; }
+
+  .section { margin-bottom: 2.5rem; }
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-bottom: 1rem;
+    padding-bottom: 0.5rem;
+    border-bottom: 1px solid var(--border);
+  }
+  .section-header h2 {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text-muted);
+  }
+
+  /* Metric cards */
+  .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .metric-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.2rem;
+  }
+  .metric-card .metric-name {
+    font-weight: 700;
+    font-size: 0.88rem;
+    margin-bottom: 0.5rem;
+  }
+  .metric-card p { font-size: 0.85rem; color: var(--text-muted); margin-bottom: 0.5rem; }
+  .metric-card .metric-question {
+    font-size: 0.82rem;
+    font-style: italic;
+    color: var(--text);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 0.4rem 0.6rem;
+    margin-top: 0.5rem;
+  }
+  .metric-card .low { font-size: 0.75rem; color: var(--red); margin-top: 0.4rem; }
+  .faithfulness .metric-name { color: var(--accent); }
+  .relevance    .metric-name { color: var(--green); }
+  .context      .metric-name { color: var(--orange); }
+
+  /* Term rows */
+  .terms { display: grid; gap: 0.75rem; }
+  .term {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 1rem 1.25rem;
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 1rem;
+    align-items: start;
+  }
+  .term-name { font-weight: 600; font-size: 0.9rem; color: var(--accent); line-height: 1.4; }
+  .term-abbrev { display: block; font-size: 0.75rem; font-weight: 400; color: var(--text-muted); margin-top: 0.1rem; }
+  .term-def { font-size: 0.9rem; color: var(--text); line-height: 1.6; }
+  .term-note { margin-top: 0.4rem; font-size: 0.8rem; color: var(--text-muted); font-style: italic; }
+  .term-example {
+    margin-top: 0.5rem;
+    background: var(--code-bg);
+    color: var(--code-text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.75rem;
+    padding: 0.6rem 0.75rem;
+    border-radius: 5px;
+    overflow-x: auto;
+    white-space: pre;
+  }
+
+  /* Code blocks */
+  .code-block {
+    background: var(--code-bg);
+    color: var(--code-text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.78rem;
+    line-height: 1.6;
+    padding: 1.2rem 1.4rem;
+    border-radius: 8px;
+    overflow-x: auto;
+    white-space: pre;
+    margin: 0.75rem 0;
+  }
+  .code-block .cm  { color: #6c7086; font-style: italic; }
+  .code-block .kw  { color: #cba6f7; }
+  .code-block .str { color: #a6e3a1; }
+  .code-block .num { color: #fab387; }
+  .code-block .fn  { color: #89b4fa; }
+
+  /* Flow diagram */
+  .flow {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    flex-wrap: wrap;
+    margin: 1rem 0;
+  }
+  .flow-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.6rem 1rem;
+    font-size: 0.82rem;
+    font-weight: 500;
+    white-space: nowrap;
+  }
+  .flow-box.highlight { background: var(--accent-soft); border-color: var(--accent); color: var(--accent); }
+  .flow-arrow { color: var(--text-muted); font-size: 1.1rem; padding: 0 0.5rem; }
+
+  /* Failure modes table */
+  .table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+  .table th {
+    text-align: left;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-muted);
+    border-bottom: 2px solid var(--border);
+  }
+  .table td {
+    padding: 0.6rem 0.75rem;
+    border-bottom: 1px solid var(--border);
+    vertical-align: top;
+  }
+  .table tr:last-child td { border-bottom: none; }
+  .badge {
+    display: inline-block;
+    font-size: 0.7rem;
+    font-weight: 600;
+    padding: 0.15rem 0.5rem;
+    border-radius: 99px;
+  }
+  .badge-faith   { background: var(--accent-soft); color: var(--accent); }
+  .badge-relev   { background: var(--green-soft);  color: var(--green); }
+  .badge-context { background: var(--orange-soft); color: var(--orange); }
+  .badge-all     { background: #f1f5f9; color: #475569; }
+
+  @media (max-width: 640px) {
+    .metric-grid { grid-template-columns: 1fr; }
+    .term { grid-template-columns: 1fr; }
+    body { padding: 1rem; }
+  }
+  @media print {
+    body { background: white; padding: 0; }
+    .section { break-inside: avoid; }
+    .metric-card { break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <header>
+    <h1>RAG Evaluation</h1>
+    <p>Cheat sheet for measuring RAG quality — faithfulness, relevance, and the LLM-as-judge pattern &mdash; Lesson 07</p>
+  </header>
+
+  <!-- METRICS -->
+  <section class="section">
+    <div class="section-header"><h2>The Three Metrics</h2></div>
+
+    <div class="metric-grid">
+
+      <div class="metric-card faithfulness">
+        <div class="metric-name">Faithfulness</div>
+        <p>Is the answer grounded in the retrieved context, or did the model make things up?</p>
+        <div class="metric-question">"Does the answer stay within what the context actually says?"</div>
+        <p class="low">Low score → hallucination. The model went beyond its source.</p>
+      </div>
+
+      <div class="metric-card relevance">
+        <div class="metric-name">Answer Relevance</div>
+        <p>Does the answer address what the user actually asked?</p>
+        <div class="metric-question">"Does the answer answer the question?"</div>
+        <p class="low">Low score → off-topic answer. Model answered a different question.</p>
+      </div>
+
+      <div class="metric-card context">
+        <div class="metric-name">Context Relevance</div>
+        <p>Did retrieval fetch chunks that are actually useful for answering the question?</p>
+        <div class="metric-question">"Are the retrieved chunks about the right thing?"</div>
+        <p class="low">Low score → retrieval failure. Wrong chunks, wrong threshold, wrong embeddings.</p>
+      </div>
+
+    </div>
+
+    <p style="font-size:0.85rem; color: var(--text-muted);">
+      <strong style="color:var(--text)">Rule of thumb:</strong>
+      Faithfulness catches <em>generation</em> failures. Context relevance catches <em>retrieval</em> failures. Answer relevance catches both — a useful final sanity check.
+    </p>
+  </section>
+
+  <!-- FAILURE DIAGNOSIS -->
+  <section class="section">
+    <div class="section-header"><h2>Diagnosing Failures</h2></div>
+
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Symptom</th>
+          <th>Which metric fails</th>
+          <th>Likely cause</th>
+          <th>Fix</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>Answer contradicts the document</td>
+          <td><span class="badge badge-faith">Faithfulness</span></td>
+          <td>Model hallucinating beyond context</td>
+          <td>Tighten system prompt: "answer ONLY from context"</td>
+        </tr>
+        <tr>
+          <td>Answer is correct but doesn't answer the question</td>
+          <td><span class="badge badge-relev">Answer Relevance</span></td>
+          <td>Model answered adjacent question</td>
+          <td>Rephrase user prompt; add few-shot examples</td>
+        </tr>
+        <tr>
+          <td>Answer confidently wrong, context is empty</td>
+          <td><span class="badge badge-context">Context Relevance</span></td>
+          <td>Similarity threshold too loose; wrong embedding model</td>
+          <td>Raise threshold; check embedding model domain fit</td>
+        </tr>
+        <tr>
+          <td>Correct fact missing from answer</td>
+          <td><span class="badge badge-context">Context Relevance</span></td>
+          <td>Chunk boundary split the key fact</td>
+          <td>Reduce chunk size or increase overlap</td>
+        </tr>
+        <tr>
+          <td>Irrelevant chunks retrieved for off-topic query</td>
+          <td><span class="badge badge-context">Context Relevance</span> <span class="badge badge-faith">Faithfulness</span></td>
+          <td>Threshold too low; model hallucinates from weak context</td>
+          <td>Raise distance threshold; add refusal path when context empty</td>
+        </tr>
+        <tr>
+          <td>All metrics fine but pass rate low</td>
+          <td><span class="badge badge-all">All</span></td>
+          <td>Test cases are too hard or judge threshold too strict</td>
+          <td>Review test cases; calibrate threshold against human labels</td>
+        </tr>
+      </tbody>
+    </table>
+  </section>
+
+  <!-- LLM-AS-JUDGE -->
+  <section class="section">
+    <div class="section-header"><h2>LLM-as-Judge Pattern</h2></div>
+
+    <div class="flow">
+      <div class="flow-box">question + context + answer</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box highlight">judge LLM call</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">{"score": 4, "reason": "..."}</div>
+      <div class="flow-arrow">→</div>
+      <div class="flow-box">pass / fail</div>
+    </div>
+
+    <div class="code-block"><span class="kw">def</span> <span class="fn">judge</span>(prompt: str) -> tuple[int, str]:
+    resp = client.chat.completions.<span class="fn">create</span>(
+        model=CHAT_MODEL,
+        messages=[{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: prompt}],
+        response_format={<span class="str">"type"</span>: <span class="str">"json_object"</span>},   <span class="cm"># force JSON output</span>
+    )
+    data = json.<span class="fn">loads</span>(resp.choices[<span class="num">0</span>].message.content)
+    <span class="kw">return</span> <span class="fn">int</span>(data[<span class="str">"score"</span>]), data[<span class="str">"reason"</span>]
+
+<span class="cm"># The judge prompt must describe the JSON schema you want back:</span>
+<span class="cm"># "Return JSON: {"score": &lt;1-5&gt;, "reason": "&lt;one sentence&gt;"}"</span></div>
+
+    <div class="terms">
+      <div class="term">
+        <div class="term-name">Why it works</div>
+        <div class="term-body">
+          <p class="term-def">The judge sees the context and answer simultaneously and can compare them in a way you can't automate with string matching. It produces a numeric score you can track over time.</p>
+          <p class="term-note">Works because LLMs are good at following a rubric — even a self-evaluation rubric — when the task is well-specified.</p>
+        </div>
+      </div>
+      <div class="term">
+        <div class="term-name">Limitations</div>
+        <div class="term-body">
+          <p class="term-def">Adds latency and cost — each test case requires extra model calls. The judge can be inconsistent across runs. A stronger judge model gives more reliable scores.</p>
+          <p class="term-note">In production: run evals offline as a batch job, not per-user. Cache results. Use a stronger judge than the model you're evaluating when possible.</p>
+        </div>
+      </div>
+      <div class="term">
+        <div class="term-name">Faithfulness prompt</div>
+        <div class="term-body">
+          <div class="term-example">Rate how faithful this answer is to the context.
+5 = fully supported, no hallucinations.
+1 = contradicts or ignores context.
+Return JSON: {"score": &lt;1-5&gt;, "reason": "&lt;one sentence&gt;"}
+
+Context: {context}
+Answer: {answer}</div>
+        </div>
+      </div>
+      <div class="term">
+        <div class="term-name">Relevance prompt</div>
+        <div class="term-body">
+          <div class="term-example">Rate how well this answer addresses the question.
+5 = directly and completely answers it.
+1 = misses the point entirely.
+The answer should mention: {must_contain}
+Return JSON: {"score": &lt;1-5&gt;, "reason": "&lt;one sentence&gt;"}
+
+Question: {question}
+Answer: {answer}</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- EVAL HARNESS -->
+  <section class="section">
+    <div class="section-header"><h2>Eval Harness Structure</h2></div>
+
+    <div class="code-block"><span class="kw">from</span> dataclasses <span class="kw">import</span> dataclass
+
+<span class="kw">@dataclass</span>
+<span class="kw">class</span> TestCase:
+    question:     str
+    must_contain: str   <span class="cm"># key fact answer must include; empty = expect refusal</span>
+
+TEST_CASES = [
+    TestCase(<span class="str">"What is the amount on invoice 1002?"</span>,  <span class="str">"1,200"</span>),
+    TestCase(<span class="str">"Who is the client on invoice 1004?"</span>,    <span class="str">"Delta"</span>),
+    TestCase(<span class="str">"What is the weather in Warsaw?"</span>,        <span class="str">""</span>),   <span class="cm"># expect refusal</span>
+]
+
+<span class="kw">for</span> tc <span class="kw">in</span> TEST_CASES:
+    context, answer = <span class="fn">rag</span>(tc.question)
+    f_score, _ = <span class="fn">score_faithfulness</span>(context, answer) <span class="kw">if</span> context <span class="kw">else</span> (<span class="num">5</span>, <span class="str">""</span>)
+    r_score, _ = <span class="fn">score_relevance</span>(tc.question, answer, tc.must_contain)
+    ok = f_score >= PASS_THRESHOLD <span class="kw">and</span> r_score >= PASS_THRESHOLD
+
+pass_rate = <span class="fn">sum</span>(results) / <span class="fn">len</span>(results) * <span class="num">100</span></div>
+
+    <div class="terms">
+      <div class="term">
+        <div class="term-name">Refusal case<span class="term-abbrev">must_contain = ""</span></div>
+        <div class="term-body">
+          <p class="term-def">When <code>must_contain</code> is empty, the correct answer is a refusal ("I don't have relevant information"). Set <code>f_score = 5</code> — a refusal makes no claims, so it can't hallucinate. Let <code>r_score</code> judge whether the refusal was appropriate.</p>
+        </div>
+      </div>
+      <div class="term">
+        <div class="term-name">Pass threshold</div>
+        <div class="term-body">
+          <p class="term-def">A common default is <code>PASS_THRESHOLD = 3</code> (out of 5). Raise to 4 for stricter evals, lower to 2 only when debugging. Track threshold alongside pass rate so results are comparable across runs.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHAT METRICS ENABLE -->
+  <section class="section">
+    <div class="section-header"><h2>What Metrics Enable</h2></div>
+    <div class="terms">
+      <div class="term">
+        <div class="term-name">Safe refactoring</div>
+        <div class="term-body">
+          <p class="term-def">Change chunk size, similarity threshold, system prompt, or model — then re-run the eval. If pass rate drops, you have a regression. Without a metric, every change is a guess.</p>
+        </div>
+      </div>
+      <div class="term">
+        <div class="term-name">Stakeholder reporting</div>
+        <div class="term-body">
+          <p class="term-def">"Our RAG answers 92% of test questions correctly, up from 67% after tuning the threshold" is a sentence you can say in a meeting. "It feels better" is not.</p>
+        </div>
+      </div>
+      <div class="term">
+        <div class="term-name">Regression detection</div>
+        <div class="term-body">
+          <p class="term-def">Run the eval in CI before deploying. A drop in pass rate blocks the deploy. This is unit testing for LLM behaviour.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+</div>
+</body>
+</html>

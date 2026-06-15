@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 07 — RAG Evaluation</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #222536;
+    --border: #2e3148;
+    --text: #e2e4f0;
+    --muted: #8b8fa8;
+    --accent: #7c6af7;
+    --accent2: #4fc3f7;
+    --green: #4caf87;
+    --yellow: #f7c948;
+    --red: #f76a6a;
+    --orange: #f79a48;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Georgia', serif; line-height: 1.7; }
+  .container { max-width: 820px; margin: 0 auto; padding: 48px 24px 96px; }
+
+  h1 { font-size: 2rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
+  h2 { font-size: 1.3rem; font-weight: 600; color: var(--accent2); margin: 40px 0 12px; }
+  h3 { font-size: 1rem; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+  p { color: var(--muted); margin-bottom: 14px; }
+  strong { color: var(--text); }
+  ul, ol { color: var(--muted); padding-left: 20px; margin-bottom: 14px; }
+  li { margin-bottom: 4px; }
+
+  .meta { color: var(--muted); font-size: 0.85rem; margin-bottom: 40px; font-family: monospace; }
+
+  .problem-box {
+    background: #1a1010;
+    border: 1px solid #4a2020;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin: 24px 0;
+  }
+  .problem-box .label { color: var(--red); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; }
+
+  .concept-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin: 24px 0;
+  }
+
+  .step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin: 20px 0;
+  }
+  .step .step-label { color: var(--accent); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; font-family: monospace; }
+
+  .nugget {
+    background: #141a0f;
+    border: 1px solid #2a4020;
+    border-left: 3px solid var(--green);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin: 24px 0;
+  }
+  .nugget .label { color: var(--green); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; font-family: monospace; }
+
+  .challenge {
+    background: #121020;
+    border: 1px solid #3a2a60;
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin: 24px 0;
+  }
+  .challenge .label { color: var(--accent); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; font-family: monospace; }
+
+  pre {
+    background: #0a0b10;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    margin: 14px 0;
+    font-family: 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 0.85rem;
+    line-height: 1.6;
+  }
+  code { font-family: 'Fira Code', 'Cascadia Code', monospace; font-size: 0.88em; color: var(--accent2); }
+  pre code { color: var(--text); font-size: 1em; }
+
+  .kw { color: #c792ea; }
+  .fn { color: #82aaff; }
+  .str { color: #c3e88d; }
+  .cm { color: #546e7a; font-style: italic; }
+  .num { color: #f78c6c; }
+  .cls { color: var(--yellow); }
+
+  .diagram-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    margin: 24px 0;
+    overflow-x: auto;
+  }
+
+  .callout {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    font-size: 0.9rem;
+  }
+
+  .tip {
+    background: #0f1a20;
+    border: 1px solid #1a4060;
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  .tip strong { color: var(--accent2); }
+
+  .metric-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 14px;
+    margin: 20px 0;
+  }
+  .metric-card {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 16px 18px;
+  }
+  .metric-card .metric-name {
+    font-family: monospace;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
+  .metric-card p { font-size: 0.88rem; margin: 0; }
+  .faithfulness .metric-name { color: var(--accent); }
+  .relevance .metric-name { color: var(--green); }
+  .context .metric-name { color: var(--orange); }
+
+  .quiz { margin: 32px 0; }
+  .quiz-q { font-weight: 600; color: var(--text); margin-bottom: 12px; }
+  .quiz-options { display: flex; flex-direction: column; gap: 8px; }
+  .quiz-option {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 16px;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 0.9rem;
+    transition: border-color 0.15s, background 0.15s;
+    text-align: left;
+    width: 100%;
+  }
+  .quiz-option:hover { border-color: var(--accent); background: var(--surface); color: var(--text); }
+  .quiz-option.correct { border-color: var(--green); background: #0f1f0f; color: var(--green); }
+  .quiz-option.wrong { border-color: var(--red); background: #1f0f0f; color: var(--red); }
+  .quiz-feedback { margin-top: 10px; font-size: 0.88rem; color: var(--muted); padding: 10px 14px; background: var(--surface); border-radius: 6px; display: none; }
+  .quiz-feedback.show { display: block; }
+
+  footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="meta">Lesson 07 · AI Engineering · 2026-06-14</div>
+  <h1>RAG Evaluation</h1>
+  <p>You have a working RAG pipeline. Now measure whether it's actually any good.</p>
+
+  <div class="problem-box">
+    <div class="label">The Problem</div>
+    <p style="margin:0">You've been testing your RAG by running a question and reading the answer. That's fine for development — but it doesn't scale. As soon as you change your chunk size, your similarity threshold, your system prompt, or your model, you need to know: <strong>did things get better or worse?</strong> Without a metric, you're flying blind.</p>
+  </div>
+
+  <p>This lesson teaches you to build an <strong>eval harness</strong> — a repeatable, automated test suite that scores your RAG pipeline on a set of known questions. You'll use the <strong>LLM-as-judge</strong> pattern, where another LLM call scores each answer.</p>
+
+  <h2>The Two Metrics That Matter</h2>
+
+  <p>There are many RAG evaluation frameworks (RAGAS, TruLens, etc.), but they all trace back to the same two fundamental questions:</p>
+
+  <div class="metric-grid">
+    <div class="metric-card faithfulness">
+      <div class="metric-name">Faithfulness</div>
+      <p>Is the answer grounded in the retrieved context, or is the model hallucinating?</p>
+    </div>
+    <div class="metric-card relevance">
+      <div class="metric-name">Answer Relevance</div>
+      <p>Does the answer actually address what the user asked?</p>
+    </div>
+    <div class="metric-card context">
+      <div class="metric-name">Context Relevance</div>
+      <p>Did retrieval fetch the right chunks? (Left as a challenge below.)</p>
+    </div>
+  </div>
+
+  <p>Today you'll implement the first two. A production RAG needs all three — but faithfulness + relevance will already catch most real failures.</p>
+
+  <h2>LLM-as-Judge</h2>
+
+  <p>The trick is using an LLM to score LLM outputs. This sounds circular, but it works in practice for two reasons:</p>
+  <ul>
+    <li>The judge sees the <em>context</em> and the <em>answer</em> simultaneously — it can compare them in a way you can't easily automate with string matching.</li>
+    <li>It produces a <strong>numeric score</strong>, which you can track over time and average across a test set.</li>
+  </ul>
+
+  <div class="tip">
+    <strong>Production note:</strong> LLM-as-judge adds latency and cost — each test case requires extra model calls. In production, run evals as an offline batch job, not on every request. Think of it like a test suite: you run it before deploying changes, not per-user.
+  </div>
+
+  <h2>What You'll Build</h2>
+
+  <p>A single file: <code>invoice-extractor/lesson_007/eval.py</code>. It reuses your lesson 6 ChromaDB. Run it and get output like this:</p>
+
+  <pre><code>
+#   Question                                   Faith Relev  OK?
+─────────────────────────────────────────────────────────────────
+1   What is the amount on invoice 1002?            5     5    ✓
+    A: The amount on Invoice #1002 is €1,200 net...
+
+2   Who is the client on invoice 1004?             5     5    ✓
+    A: The client on Invoice #1004 is Delta SA...
+
+3   What is the due date for invoice 1002?         5     5    ✓
+    A: The due date for Invoice #1002 is 2026-05-31...
+
+4   Is invoice 1004 overdue?                       5     4    ✓
+    A: Yes, Invoice #1004 is OVERDUE — payment 29 days late...
+
+5   What is credit note CN-01 for?                 5     5    ✓
+    A: Credit note CN-01 was issued for a duplicate charge...
+
+6   What is the weather in Warsaw?                 5     4    ✓
+    A: I don't have relevant information to answer that.
+
+Pass rate: 6/6 (100%)
+  </code></pre>
+
+  <h2>Step 1 — Create the folder</h2>
+
+  <pre><code>mkdir -p invoice-extractor/lesson_007</code></pre>
+
+  <h2>Step 2 — Write <code>eval.py</code></h2>
+
+  <div class="step">
+    <div class="step-label">eval.py</div>
+<pre><code><span class="kw">from</span> dataclasses <span class="kw">import</span> dataclass
+<span class="kw">import</span> json
+<span class="kw">from</span> pathlib <span class="kw">import</span> Path
+<span class="kw">from</span> openai <span class="kw">import</span> OpenAI
+<span class="kw">import</span> chromadb
+
+client = <span class="fn">OpenAI</span>(base_url=<span class="str">"http://localhost:11434/v1"</span>, api_key=<span class="str">"ollama"</span>)
+EMBED_MODEL = <span class="str">"nomic-embed-text"</span>
+CHAT_MODEL  = <span class="str">"llama3.2"</span>
+
+DB_DIR = <span class="fn">Path</span>(__file__).parent.parent / <span class="str">"lesson_006"</span> / <span class="str">"chroma_db"</span>
+chroma = chromadb.<span class="fn">PersistentClient</span>(path=<span class="fn">str</span>(DB_DIR))
+collection = chroma.<span class="fn">get_collection</span>(name=<span class="str">"invoices"</span>)
+
+
+<span class="cm"># ── Test cases ────────────────────────────────────────────────────────────────</span>
+<span class="kw">@dataclass</span>
+<span class="kw">class</span> <span class="cls">TestCase</span>:
+    question: <span class="fn">str</span>
+    must_contain: <span class="fn">str</span>  <span class="cm"># key fact the answer should include; empty = expect refusal</span>
+
+
+TEST_CASES = [
+    <span class="cls">TestCase</span>(<span class="str">"What is the amount on invoice 1002?"</span>,     <span class="str">"1,200"</span>),
+    <span class="cls">TestCase</span>(<span class="str">"Who is the client on invoice 1004?"</span>,       <span class="str">"Delta"</span>),
+    <span class="cls">TestCase</span>(<span class="str">"What is the due date for invoice 1002?"</span>,   <span class="str">"2026-05-31"</span>),
+    <span class="cls">TestCase</span>(<span class="str">"Is invoice 1004 overdue?"</span>,                 <span class="str">"overdue"</span>),
+    <span class="cls">TestCase</span>(<span class="str">"What is credit note CN-01 for?"</span>,            <span class="str">"duplicate"</span>),
+    <span class="cls">TestCase</span>(<span class="str">"What is the weather in Warsaw?"</span>,            <span class="str">""</span>),
+]
+
+
+<span class="cm"># ── RAG ───────────────────────────────────────────────────────────────────────</span>
+<span class="kw">def</span> <span class="fn">embed</span>(text: <span class="fn">str</span>) -> list[<span class="fn">float</span>]:
+    <span class="kw">return</span> client.embeddings.<span class="fn">create</span>(model=EMBED_MODEL, input=text).data[<span class="num">0</span>].embedding
+
+
+<span class="kw">def</span> <span class="fn">rag</span>(question: <span class="fn">str</span>) -> tuple[<span class="fn">str</span>, <span class="fn">str</span>]:
+    results = collection.<span class="fn">query</span>(
+        query_embeddings=[<span class="fn">embed</span>(question)],
+        n_results=<span class="num">3</span>,
+        include=[<span class="str">"documents"</span>, <span class="str">"distances"</span>],
+    )
+    chunks = [
+        doc
+        <span class="kw">for</span> doc, dist <span class="kw">in</span> <span class="fn">zip</span>(results[<span class="str">"documents"</span>][<span class="num">0</span>], results[<span class="str">"distances"</span>][<span class="num">0</span>])
+        <span class="kw">if</span> dist < <span class="num">0.5</span>
+    ]
+    context = <span class="str">"\n\n"</span>.<span class="fn">join</span>(chunks)
+
+    <span class="kw">if not</span> context:
+        <span class="kw">return</span> <span class="str">""</span>, <span class="str">"I don't have relevant information to answer that."</span>
+
+    messages = [
+        {<span class="str">"role"</span>: <span class="str">"system"</span>, <span class="str">"content"</span>: <span class="fn">f</span><span class="str">"Answer using ONLY this context:\n\n{context}"</span>},
+        {<span class="str">"role"</span>: <span class="str">"user"</span>,   <span class="str">"content"</span>: question},
+    ]
+    answer = client.chat.completions.<span class="fn">create</span>(
+        model=CHAT_MODEL, messages=messages
+    ).choices[<span class="num">0</span>].message.content
+    <span class="kw">return</span> context, answer
+
+
+<span class="cm"># ── LLM-as-judge ─────────────────────────────────────────────────────────────</span>
+<span class="kw">def</span> <span class="fn">judge</span>(prompt: <span class="fn">str</span>) -> tuple[<span class="fn">int</span>, <span class="fn">str</span>]:
+    resp = client.chat.completions.<span class="fn">create</span>(
+        model=CHAT_MODEL,
+        messages=[{<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: prompt}],
+        response_format={<span class="str">"type"</span>: <span class="str">"json_object"</span>},
+    )
+    data = json.<span class="fn">loads</span>(resp.choices[<span class="num">0</span>].message.content)
+    <span class="kw">return</span> <span class="fn">int</span>(data[<span class="str">"score"</span>]), data[<span class="str">"reason"</span>]
+
+
+<span class="kw">def</span> <span class="fn">score_faithfulness</span>(context: <span class="fn">str</span>, answer: <span class="fn">str</span>) -> tuple[<span class="fn">int</span>, <span class="fn">str</span>]:
+    <span class="kw">return</span> <span class="fn">judge</span>(<span class="fn">f</span><span class="str">"""Rate how faithful this answer is to the context.
+5 = fully supported, no hallucinations. 1 = contradicts or ignores context.
+Return JSON: {{"score": &lt;1-5&gt;, "reason": "&lt;one sentence&gt;"}}
+
+Context: {context}
+Answer: {answer}"""</span>)
+
+
+<span class="kw">def</span> <span class="fn">score_relevance</span>(question: <span class="fn">str</span>, answer: <span class="fn">str</span>, must_contain: <span class="fn">str</span>) -> tuple[<span class="fn">int</span>, <span class="fn">str</span>]:
+    hint = (
+        <span class="fn">f</span><span class="str">"The answer should mention: {must_contain}"</span>
+        <span class="kw">if</span> must_contain
+        <span class="kw">else</span> <span class="str">"A correct answer here says it has no relevant information."</span>
+    )
+    <span class="kw">return</span> <span class="fn">judge</span>(<span class="fn">f</span><span class="str">"""Rate how well this answer addresses the question.
+5 = directly and completely answers it. 1 = misses the point entirely.
+{hint}
+Return JSON: {{"score": &lt;1-5&gt;, "reason": "&lt;one sentence&gt;"}}
+
+Question: {question}
+Answer: {answer}"""</span>)
+
+
+<span class="cm"># ── Main ──────────────────────────────────────────────────────────────────────</span>
+PASS_THRESHOLD = <span class="num">3</span>
+
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    passed = <span class="num">0</span>
+    <span class="fn">print</span>(<span class="fn">f</span><span class="str">"\n{'#':<span class="num">3</span>} {'Question':<span class="num">42</span>} {'Faith':><span class="num">5</span>} {'Relev':><span class="num">5</span>} {'OK?':><span class="num">4</span>}"</span>)
+    <span class="fn">print</span>(<span class="str">"─"</span> * <span class="num">65</span>)
+
+    <span class="kw">for</span> i, tc <span class="kw">in</span> <span class="fn">enumerate</span>(TEST_CASES, <span class="num">1</span>):
+        context, answer = <span class="fn">rag</span>(tc.question)
+
+        <span class="kw">if</span> context:
+            f_score, _ = <span class="fn">score_faithfulness</span>(context, answer)
+        <span class="kw">else</span>:
+            f_score = <span class="num">5</span>  <span class="cm"># refusal is always faithful — nothing was hallucinated</span>
+
+        r_score, r_reason = <span class="fn">score_relevance</span>(tc.question, answer, tc.must_contain)
+        ok = f_score >= PASS_THRESHOLD <span class="kw">and</span> r_score >= PASS_THRESHOLD
+        <span class="kw">if</span> ok:
+            passed += <span class="num">1</span>
+
+        q = tc.question[:<span class="num">39</span>] + <span class="str">"..."</span> <span class="kw">if</span> <span class="fn">len</span>(tc.question) > <span class="num">39</span> <span class="kw">else</span> tc.question
+        <span class="fn">print</span>(<span class="fn">f</span><span class="str">"{i:&lt;3} {q:&lt;42} {f_score:&gt;5} {r_score:&gt;5} {'✓' if ok else '✗':&gt;4}"</span>)
+        <span class="fn">print</span>(<span class="fn">f</span><span class="str">"    A: {answer[:<span class="num">90</span>]}"</span>)
+        <span class="kw">if not</span> ok:
+            <span class="fn">print</span>(<span class="fn">f</span><span class="str">"    ↳ {r_reason}"</span>)
+        <span class="fn">print</span>()
+
+    rate = passed / <span class="fn">len</span>(TEST_CASES) * <span class="num">100</span>
+    <span class="fn">print</span>(<span class="fn">f</span><span class="str">"Pass rate: {passed}/{<span class="fn">len</span>(TEST_CASES)} ({rate:<span class="num">.0f</span>}%)"</span>)
+</code></pre>
+  </div>
+
+  <h2>Step 3 — Run it</h2>
+
+  <pre><code>cd invoice-extractor
+source .venv/bin/activate
+python lesson_007/eval.py</code></pre>
+
+  <div class="tip">
+    <strong>Note:</strong> This reuses the ChromaDB from lesson 6. Make sure you've already run <code>python lesson_006/ingest.py</code> — otherwise the collection won't exist and you'll get a <code>CollectionNotFound</code> error.
+  </div>
+
+  <h2>Python Nuggets</h2>
+
+  <div class="nugget">
+    <div class="label">Python Nugget — @dataclass</div>
+    <p><code>@dataclass</code> auto-generates <code>__init__</code>, <code>__repr__</code>, and <code>__eq__</code> for you. Think of it as Python's equivalent of a TypeScript interface with values, or a Java POJO without the ceremony:</p>
+    <pre><code><span class="kw">@dataclass</span>
+<span class="kw">class</span> <span class="cls">TestCase</span>:
+    question: <span class="fn">str</span>
+    must_contain: <span class="fn">str</span>
+
+<span class="cm"># Equivalent hand-written version (don't do this):</span>
+<span class="kw">class</span> <span class="cls">TestCase</span>:
+    <span class="kw">def</span> <span class="fn">__init__</span>(self, question: <span class="fn">str</span>, must_contain: <span class="fn">str</span>):
+        self.question = question
+        self.must_contain = must_contain</code></pre>
+    <p style="margin:0">Dataclasses are the go-to for simple structured data in Python. Use <code>@dataclass(frozen=True)</code> for immutable instances.</p>
+  </div>
+
+  <div class="nugget">
+    <div class="label">Python Nugget — f-string alignment</div>
+    <p>F-strings support format specs for padding — useful for tabular output:</p>
+    <pre><code>name = <span class="str">"invoice 1002?"</span>
+score = <span class="num">5</span>
+
+<span class="fn">print</span>(<span class="fn">f</span><span class="str">"{name:&lt;42}"</span>)   <span class="cm"># left-aligned in 42 chars:  "invoice 1002?                             "</span>
+<span class="fn">print</span>(<span class="fn">f</span><span class="str">"{score:&gt;5}"</span>)   <span class="cm"># right-aligned in 5 chars:  "    5"</span>
+<span class="fn">print</span>(<span class="fn">f</span><span class="str">"{score:^5}"</span>)   <span class="cm"># centered in 5 chars:       "  5  "</span>
+<span class="fn">print</span>(<span class="fn">f</span><span class="str">"{0.667:.0f}"</span>)  <span class="cm"># float, 0 decimal places:   "1"</span>
+<span class="fn">print</span>(<span class="fn">f</span><span class="str">"{0.667:.1%}"</span>)  <span class="cm"># percentage, 1 decimal:     "66.7%"</span></code></pre>
+    <p style="margin:0">Align chars: <code>&lt;</code> left, <code>&gt;</code> right, <code>^</code> center. Format: <code>{value:[align][width][.precision][type]}</code></p>
+  </div>
+
+  <div class="nugget">
+    <div class="label">Python Nugget — json.loads()</div>
+    <p>When an API returns a JSON string, <code>json.loads()</code> parses it to a Python dict/list. Ollama's JSON mode gives you the model's output as a JSON string inside the response content — not auto-parsed:</p>
+    <pre><code><span class="kw">import</span> json
+
+raw = <span class="str">'{"score": 4, "reason": "Answer is supported by context"}'</span>
+data = json.<span class="fn">loads</span>(raw)       <span class="cm"># → dict</span>
+data[<span class="str">"score"</span>]               <span class="cm"># → 4 (int, not string)</span>
+
+<span class="cm"># json.dumps() goes the other way:</span>
+json.<span class="fn">dumps</span>(data)             <span class="cm"># → '{"score": 4, "reason": "..."}'</span>
+json.<span class="fn">dumps</span>(data, indent=<span class="num">2</span>)  <span class="cm"># pretty-printed</span></code></pre>
+  </div>
+
+  <h2>How LLM-as-Judge Works</h2>
+
+  <div class="concept-box">
+    <p>The <code>judge()</code> function asks the model to return structured JSON. The key is <strong><code>response_format={"type": "json_object"}</code></strong> — this tells Ollama to force JSON output, preventing the model from wrapping its response in markdown or prose.</p>
+    <p style="margin:0">Your prompt must describe the JSON schema you want. The model won't infer it — you have to tell it: <em>"Return JSON: {"score": &lt;1-5&gt;, "reason": "&lt;one sentence&gt;"}"</em></p>
+  </div>
+
+  <div class="diagram-wrap">
+    <pre style="background:none; border:none; padding:0; color: var(--muted); font-size: 0.82rem;">
+  Test case
+  ─────────
+  question: "What is the amount on invoice 1002?"
+  must_contain: "1,200"
+          │
+          ▼
+  ┌─────────────────────┐
+  │   rag(question)     │
+  │  embed → search     │
+  │  → inject → LLM     │
+  └──────────┬──────────┘
+             │
+       context, answer
+       /            \
+      ▼              ▼
+  ┌──────────┐  ┌──────────────────────┐
+  │ faithful-│  │ relevance judge       │
+  │ ness     │  │ (question vs answer) │
+  │ judge    │  └──────────┬───────────┘
+  └────┬─────┘             │
+       │ f_score           │ r_score
+       └─────────┬─────────┘
+                 ▼
+            ok = both >= 3
+    </pre>
+  </div>
+
+  <h2>Challenges</h2>
+
+  <div class="challenge">
+    <div class="label">Challenge 1 — Raise the bar</div>
+    <p>Change <code>PASS_THRESHOLD</code> from <code>3</code> to <code>4</code>. How does the pass rate change? Which questions drop below the bar?</p>
+  </div>
+
+  <div class="challenge">
+    <div class="label">Challenge 2 — Add test cases</div>
+    <p>Add two more test cases grounded in the documents. Ideas: the company picnic date, the credit note amount, the contact email for invoice 1002. Run the eval — do they pass?</p>
+  </div>
+
+  <div class="challenge">
+    <div class="label">Challenge 3 — Context relevance metric</div>
+    <p>Add a third metric: <strong>context relevance</strong> — did the retrieval actually fetch useful chunks? Write a <code>score_context_relevance(question, context)</code> judge that scores whether the context contains information relevant to the question (5 = directly relevant, 1 = completely off-topic). Include it in the output table.</p>
+    <p style="margin:0">This is the third leg of the RAG eval triad. Together, all three let you debug <em>where</em> failures happen: retrieval, generation, or grounding.</p>
+  </div>
+
+  <h2>Quiz</h2>
+
+  <div class="quiz">
+    <div class="quiz-q">1. Your RAG gets a faithfulness score of 2 on a test case. What does this most likely mean?</div>
+    <div class="quiz-options">
+      <button class="quiz-option" onclick="answer(this, false, 'Faithfulness measures whether the <em>answer</em> is grounded in the context — not whether the retrieval found the right chunks. That\'s context relevance.')">The retrieval fetched the wrong chunks.</button>
+      <button class="quiz-option" onclick="answer(this, true, 'Correct. A low faithfulness score means the model\'s answer contradicts or goes beyond what the context says — classic hallucination.')">The model hallucinated — the answer isn't supported by the retrieved context.</button>
+      <button class="quiz-option" onclick="answer(this, false, 'Answer relevance measures whether the answer addresses the question, not whether it\'s grounded in context.')">The answer doesn't address what the user asked.</button>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+  <div class="quiz" style="margin-top: 28px;">
+    <div class="quiz-q">2. Why do you set <code>f_score = 5</code> when there's no context (the model refused)?</div>
+    <div class="quiz-options">
+      <button class="quiz-option" onclick="answer(this, false, 'Not quite — 5 doesn\'t mean the answer is useful, it means the answer is <em>faithful</em>. Faithfulness asks: did the model stick to its source?')">Because the answer is definitely correct.</button>
+      <button class="quiz-option" onclick="answer(this, true, 'Exactly. Faithfulness asks: did the model stay within its source? A refusal makes no claims beyond context, so it can\'t hallucinate. It gets a perfect faithfulness score by definition. Answer relevance is what determines whether the refusal was actually appropriate.')">Because a refusal makes no claims — it can't hallucinate. Faithfulness is trivially perfect.</button>
+      <button class="quiz-option" onclick="answer(this, false, 'Skipping the judge would mean we miss the case entirely. We still score relevance to check whether the refusal was appropriate.')">To avoid calling the LLM judge on empty input.</button>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+  <div class="quiz" style="margin-top: 28px;">
+    <div class="quiz-q">3. You change your chunk size from 300 words to 150 words and run the eval. The pass rate drops from 100% to 67%. What should you investigate first?</div>
+    <div class="quiz-options">
+      <button class="quiz-option" onclick="answer(this, false, 'This is possible but unlikely to cause a sudden drop. The chunk size change is the variable you just changed.')">The LLM model has a bug.</button>
+      <button class="quiz-option" onclick="answer(this, false, 'Rollback is always an option, but you should first understand <em>which</em> test cases failed and <em>why</em>.')">Roll back the chunk size change immediately.</button>
+      <button class="quiz-option" onclick="answer(this, true, 'Correct. Smaller chunks can split key facts across chunk boundaries, causing retrieval to return incomplete context. Look at which test cases failed and print the retrieved chunks to diagnose.')">Which test cases failed, and whether the retrieved chunks still contain the key facts (context relevance).</button>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+  <h2>Ask Your Teacher</h2>
+
+  <p>Questions worth asking in this session:</p>
+  <ul>
+    <li><strong>"My faithfulness scores are consistently low — is the judge prompt wrong or is my RAG hallucinating?"</strong></li>
+    <li><strong>"How do production teams handle eval at scale — can you evaluate thousands of questions without burning through API costs?"</strong></li>
+    <li><strong>"What's RAGAS and how does it differ from what we built here?"</strong></li>
+    <li><strong>"When should I use a separate, stronger model as the judge vs the same model I'm testing?"</strong></li>
+  </ul>
+
+  <p>Type your question directly to the agent — it's your teacher and can go deeper on any of these.</p>
+
+  <footer>
+    Lesson 07 · AI Engineering · Open with: <code>open lessons/0007-rag-evaluation.html</code>
+  </footer>
+
+</div>
+
+<script>
+function answer(btn, correct, explanation) {
+  const quiz = btn.closest('.quiz');
+  if (quiz.querySelector('.correct, .wrong')) return;
+  btn.classList.add(correct ? 'correct' : 'wrong');
+  if (!correct) {
+    quiz.querySelectorAll('.quiz-option').forEach(o => {
+      if (o !== btn) o.disabled = true;
+    });
+  }
+  const fb = quiz.querySelector('.quiz-feedback');
+  fb.innerHTML = explanation;
+  fb.classList.add('show');
+}
+</script>
+</body>
+</html>
