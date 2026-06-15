@@ -1,32 +1,32 @@
 ---
 name: lesson-07-rag-evaluation
-description: Lesson 07 delivered — RAG evaluation with LLM-as-judge pattern, @dataclass, JSON mode, f-string alignment
+description: Completed Lesson 07 — built full RAG eval harness, LLM-as-judge, debugged judge inconsistency, temperature, rubric design
 metadata:
   type: project
 ---
 
-Lesson 07 delivered on 2026-06-14. Taught RAG evaluation — moving from vibes-based testing to a repeatable eval harness with numeric metrics.
+Completed Lesson 07 on 2026-06-15. Built a working eval harness for the lesson 6 RAG pipeline.
 
-**Core concepts taught:**
-- The two primary RAG metrics: faithfulness (answer grounded in context?) and answer relevance (does it answer the question?)
-- LLM-as-judge pattern: use `response_format={"type": "json_object"}` to get structured scores from the same local model
-- Eval harness pattern: a `TEST_CASES` list of `@dataclass` instances, run through RAG, scored, summarised as pass rate
+**What was built:**
+- `invoice-extractor/lesson_007/eval.py` — full eval harness with three metrics: faithfulness, answer relevance, context relevance
+- `@dataclass TestCase` with `must_contain` and `expect_refusal` fields
+- Separate OpenAI client for the judge (gpt-4o) vs. the RAG model (llama3.2)
 
-**Code built:**
-- `invoice-extractor/lesson_007/eval.py` — full eval harness reusing lesson_006's ChromaDB
+**Bugs hit and fixed:**
+- `{r_score>5}` instead of `{r_score:>5}` — boolean comparison printed "False" instead of score
+- `pass rate` print inside the for loop (wrong indentation)
+- Distance threshold `0.5` too strict — lesson 6 uses `0.8`, all RAG results were filtered out
+- `must_contain=""` overloaded to mean both "unanswerable question" and "no keyword" — split into `expect_refusal: bool`
+- Refusal rubric fighting the main rubric — fixed by giving refusal cases a completely separate judge prompt
 
-**Python nuggets taught:**
-- `@dataclass` decorator — auto-generates `__init__`, `__repr__`, `__eq__`; Python's equivalent of a TypeScript interface
-- `json.loads()` / `json.dumps()` — parse JSON strings from API responses
-- f-string alignment: `f"{value:<42}"` (left), `f"{value:>5}"` (right), `f"{value:.0f}"` (float precision)
-
-**Challenges set:**
-1. Raise `PASS_THRESHOLD` to 4 and observe which cases drop
-2. Add test cases for picnic date, CN-01 amount, contact email
-3. Add a third metric: context relevance (`score_context_relevance(question, context)`)
+**Key insights:**
+- Local model (llama3.2) as its own judge is unreliable — inconsistent faithfulness scores. Fix: use a stronger separate model (gpt-4o) as judge.
+- `temperature=0` needed on BOTH the RAG model and the judge — judge determinism alone isn't enough if the model being tested is still sampling randomly.
+- False positive on Q3: hallucinated date (May→June) passed eval with faithfulness=4. Demonstrates that LLM-as-judge is not a perfect safety net.
+- Rubric design matters: "5 = directly answers it" conflicts with a correct refusal. Separate prompts for separate cases.
+- User independently added `score_context_relevance` (challenge 3) and integrated it cleanly into the harness.
 
 **Implications:**
-- Knows how to set up a repeatable, automated eval suite for RAG
-- Understands LLM-as-judge as the practical way to score open-ended answers
-- Understands the faithfulness/relevance triad (context relevance left as challenge)
-- Next natural step: deployment — FastAPI wrapper around the RAG + eval, or stateful agents
+- Understands full eval triad end-to-end (faithfulness, answer relevance, context relevance)
+- Understands judge model selection and temperature as correctness levers
+- Ready for stateful agents — the 4th project on the roadmap

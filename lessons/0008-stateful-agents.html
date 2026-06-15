@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lesson 08 — Stateful Agents</title>
+<style>
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #222536;
+    --border: #2e3148;
+    --text: #e2e4f0;
+    --muted: #8b8fa8;
+    --accent: #7c6af7;
+    --accent2: #4fc3f7;
+    --green: #4caf87;
+    --yellow: #f7c948;
+    --red: #f76a6a;
+    --orange: #f79a48;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Georgia', serif; line-height: 1.7; }
+  .container { max-width: 820px; margin: 0 auto; padding: 48px 24px 96px; }
+
+  h1 { font-size: 2rem; font-weight: 700; color: #fff; margin-bottom: 8px; }
+  h2 { font-size: 1.3rem; font-weight: 600; color: var(--accent2); margin: 40px 0 12px; }
+  h3 { font-size: 1rem; font-weight: 600; color: var(--text); margin: 24px 0 8px; }
+  p { color: var(--muted); margin-bottom: 14px; }
+  strong { color: var(--text); }
+  ul, ol { color: var(--muted); padding-left: 20px; margin-bottom: 14px; }
+  li { margin-bottom: 4px; }
+
+  .meta { color: var(--muted); font-size: 0.85rem; margin-bottom: 40px; font-family: monospace; }
+
+  .problem-box {
+    background: #1a1010;
+    border: 1px solid #4a2020;
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin: 24px 0;
+  }
+  .problem-box .label { color: var(--red); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; }
+
+  .concept-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin: 24px 0;
+  }
+
+  .step {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 20px 24px;
+    margin: 20px 0;
+  }
+  .step .step-label { color: var(--accent); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; font-family: monospace; }
+
+  .nugget {
+    background: #141a0f;
+    border: 1px solid #2a4020;
+    border-left: 3px solid var(--green);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin: 24px 0;
+  }
+  .nugget .label { color: var(--green); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; font-family: monospace; }
+
+  .challenge {
+    background: #121020;
+    border: 1px solid #3a2a60;
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 18px 22px;
+    margin: 24px 0;
+  }
+  .challenge .label { color: var(--accent); font-size: 0.75rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 8px; font-family: monospace; }
+
+  pre {
+    background: #0a0b10;
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 18px 20px;
+    overflow-x: auto;
+    margin: 14px 0;
+    font-family: 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 0.85rem;
+    line-height: 1.6;
+  }
+  code { font-family: 'Fira Code', 'Cascadia Code', monospace; font-size: 0.88em; color: var(--accent2); }
+  pre code { color: var(--text); font-size: 1em; }
+
+  .kw  { color: #c792ea; }
+  .fn  { color: #82aaff; }
+  .str { color: #c3e88d; }
+  .cm  { color: #546e7a; font-style: italic; }
+  .num { color: #f78c6c; }
+  .cls { color: var(--yellow); }
+
+  .diagram-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 24px;
+    margin: 24px 0;
+    overflow-x: auto;
+  }
+
+  .tip {
+    background: #0f1a20;
+    border: 1px solid #1a4060;
+    border-radius: 6px;
+    padding: 14px 18px;
+    margin: 16px 0;
+    color: var(--muted);
+    font-size: 0.9rem;
+  }
+  .tip strong { color: var(--accent2); }
+
+  .convo {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 18px 20px;
+    margin: 16px 0;
+    font-family: 'Fira Code', 'Cascadia Code', monospace;
+    font-size: 0.84rem;
+    line-height: 1.8;
+  }
+  .convo .u { color: var(--accent2); }
+  .convo .a { color: var(--green); }
+  .convo .dim { color: var(--muted); }
+
+  .quiz { margin: 32px 0; }
+  .quiz-q { font-weight: 600; color: var(--text); margin-bottom: 12px; }
+  .quiz-options { display: flex; flex-direction: column; gap: 8px; }
+  .quiz-option {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 16px;
+    cursor: pointer;
+    color: var(--muted);
+    font-size: 0.9rem;
+    transition: border-color 0.15s, background 0.15s;
+    text-align: left;
+    width: 100%;
+  }
+  .quiz-option:hover { border-color: var(--accent); background: var(--surface); color: var(--text); }
+  .quiz-option.correct { border-color: var(--green); background: #0f1f0f; color: var(--green); }
+  .quiz-option.wrong { border-color: var(--red); background: #1f0f0f; color: var(--red); }
+  .quiz-feedback { margin-top: 10px; font-size: 0.88rem; color: var(--muted); padding: 10px 14px; background: var(--surface); border-radius: 6px; display: none; }
+  .quiz-feedback.show { display: block; }
+
+  footer { margin-top: 64px; padding-top: 24px; border-top: 1px solid var(--border); color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <div class="meta">Lesson 08 · AI Engineering · 2026-06-15</div>
+  <h1>Stateful Agents</h1>
+  <p>Give your LLM a memory. Build a multi-turn assistant that understands follow-up questions.</p>
+
+  <div class="problem-box">
+    <div class="label">The Problem</div>
+    <p style="margin:0">Every RAG call you've built so far is stateless — each question is independent. Ask "Is invoice 1004 overdue?" and it answers. Then ask "Who is the client?" and the model has no idea what "the client" refers to. Each call starts from scratch. Real assistants need to hold a conversation.</p>
+  </div>
+
+  <p>The fix is a single list. Every message — user and assistant — gets appended to a <strong>conversation history</strong> and sent on every call. The model now has context for the whole session.</p>
+
+  <h2>How Conversation History Works</h2>
+
+  <div class="concept-box">
+    <p>The OpenAI messages API already supports this — it accepts a list. You've been sending a list with one or two items. An agent sends the <em>whole history</em>:</p>
+    <pre><code><span class="cm"># Turn 1</span>
+messages = [
+  {<span class="str">"role"</span>: <span class="str">"system"</span>, <span class="str">"content"</span>: <span class="str">"You are an invoice assistant..."</span>},
+  {<span class="str">"role"</span>: <span class="str">"user"</span>,   <span class="str">"content"</span>: <span class="str">"Is invoice 1004 overdue?"</span>},
+]
+<span class="cm"># model replies: "Yes, it's overdue since May 15."</span>
+messages.<span class="fn">append</span>({<span class="str">"role"</span>: <span class="str">"assistant"</span>, <span class="str">"content"</span>: <span class="str">"Yes, it's overdue since May 15."</span>})
+
+<span class="cm"># Turn 2 — send the whole list</span>
+messages.<span class="fn">append</span>({<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: <span class="str">"Who is the client?"</span>})
+<span class="cm"># model now sees both turns and answers: "Delta SA, Warsaw."</span></code></pre>
+    <p style="margin:0">The model has no memory between API calls — it only knows what's in the messages list. You are the memory.</p>
+  </div>
+
+  <h2>Injecting RAG Context Per Turn</h2>
+
+  <p>Conversation history and RAG context are two separate things. Each turn, you retrieve fresh context for the new question and inject it into the user message. The history accumulates separately.</p>
+
+  <div class="diagram-wrap">
+    <pre style="background:none; border:none; padding:0; color: var(--muted); font-size: 0.82rem;">
+  User types question
+          │
+          ▼
+  embed → ChromaDB search → chunks
+          │
+          ▼
+  Wrap: "Context:\n{chunks}\n\nQuestion: {question}"
+          │
+          ▼
+  Append to messages list
+          │
+          ▼
+  Send entire messages list to LLM
+          │
+          ▼
+  Append assistant reply to messages list
+          │
+          ▼
+  Print reply → wait for next question
+    </pre>
+  </div>
+
+  <p>The system prompt is set once. Context + question is the user message each turn. The assistant reply is appended after each call. The list grows by two entries per turn.</p>
+
+  <h2>What You'll Build</h2>
+
+  <p>A REPL-style invoice assistant. Run it, ask questions, get answers that reference prior turns:</p>
+
+  <div class="convo">
+    <span class="dim">You: </span><span class="u">Is invoice 1004 overdue?</span><br>
+    <span class="dim">Assistant: </span><span class="a">Yes — invoice #1004 for Delta SA is overdue. Due date was 2026-05-15, now 29 days late.</span><br><br>
+    <span class="dim">You: </span><span class="u">What was the original amount?</span><br>
+    <span class="dim">Assistant: </span><span class="a">The amount on invoice #1004 is €8,400 net for annual infrastructure support.</span><br><br>
+    <span class="dim">You: </span><span class="u">Did they request an extension?</span><br>
+    <span class="dim">Assistant: </span><span class="a">Yes — Delta SA requested a 30-day extension by email on 2026-05-10, but it was not agreed.</span><br><br>
+    <span class="dim">You: </span><span class="u">quit</span><br>
+    <span class="dim">Goodbye.</span>
+  </div>
+
+  <h2>Step 1 — Create the folder</h2>
+  <pre><code>mkdir -p invoice-extractor/lesson_008</code></pre>
+
+  <h2>Step 2 — Write <code>agent.py</code></h2>
+
+  <div class="step">
+    <div class="step-label">agent.py</div>
+<pre><code><span class="kw">from</span> pathlib <span class="kw">import</span> Path
+<span class="kw">from</span> openai <span class="kw">import</span> OpenAI
+<span class="kw">import</span> chromadb
+
+client = <span class="fn">OpenAI</span>(base_url=<span class="str">"http://localhost:11434/v1"</span>, api_key=<span class="str">"ollama"</span>)
+EMBED_MODEL = <span class="str">"nomic-embed-text"</span>
+CHAT_MODEL  = <span class="str">"llama3.2"</span>
+
+DB_DIR = <span class="fn">Path</span>(__file__).parent.parent / <span class="str">"lesson_006"</span> / <span class="str">"chroma_db"</span>
+chroma = chromadb.<span class="fn">PersistentClient</span>(path=<span class="fn">str</span>(DB_DIR))
+collection = chroma.<span class="fn">get_collection</span>(name=<span class="str">"invoices"</span>)
+
+
+<span class="kw">def</span> <span class="fn">embed</span>(text: <span class="fn">str</span>) -> list[<span class="fn">float</span>]:
+    <span class="kw">return</span> client.embeddings.<span class="fn">create</span>(model=EMBED_MODEL, input=text).data[<span class="num">0</span>].embedding
+
+
+<span class="kw">def</span> <span class="fn">retrieve</span>(question: <span class="fn">str</span>) -> <span class="fn">str</span>:
+    results = collection.<span class="fn">query</span>(
+        query_embeddings=[<span class="fn">embed</span>(question)],
+        n_results=<span class="num">3</span>,
+        include=[<span class="str">"documents"</span>, <span class="str">"distances"</span>],
+    )
+    chunks = [
+        doc
+        <span class="kw">for</span> doc, dist <span class="kw">in</span> <span class="fn">zip</span>(results[<span class="str">"documents"</span>][<span class="num">0</span>], results[<span class="str">"distances"</span>][<span class="num">0</span>])
+        <span class="kw">if</span> dist <= <span class="num">0.8</span>
+    ]
+    <span class="kw">return</span> <span class="str">"\n\n"</span>.<span class="fn">join</span>(chunks)
+
+
+<span class="kw">def</span> <span class="fn">chat</span>(messages: list[<span class="fn">dict</span>]) -> <span class="fn">str</span>:
+    <span class="kw">return</span> (
+        client.chat.completions
+        .<span class="fn">create</span>(model=CHAT_MODEL, messages=messages, temperature=<span class="num">0</span>)
+        .choices[<span class="num">0</span>].message.content
+    )
+
+
+<span class="kw">def</span> <span class="fn">main</span>():
+    messages = [
+        {
+            <span class="str">"role"</span>: <span class="str">"system"</span>,
+            <span class="str">"content"</span>: (
+                <span class="str">"You are an invoice assistant. When context is provided in a user message, "</span>
+                <span class="str">"answer using ONLY that context. If no context is provided, use the conversation history. "</span>
+                <span class="str">"If you don't have enough information, say so."</span>
+            ),
+        }
+    ]
+
+    <span class="fn">print</span>(<span class="str">"Invoice assistant ready. Type 'quit' to exit.\n"</span>)
+
+    <span class="kw">while True</span>:
+        <span class="kw">try</span>:
+            question = <span class="fn">input</span>(<span class="str">"You: "</span>).<span class="fn">strip</span>()
+        <span class="kw">except</span> <span class="cls">KeyboardInterrupt</span>:
+            <span class="fn">print</span>(<span class="str">"\nGoodbye."</span>)
+            <span class="kw">break</span>
+
+        <span class="kw">if</span> question.<span class="fn">lower</span>() <span class="kw">in</span> (<span class="str">"quit"</span>, <span class="str">"exit"</span>, <span class="str">"q"</span>):
+            <span class="fn">print</span>(<span class="str">"Goodbye."</span>)
+            <span class="kw">break</span>
+
+        <span class="kw">if not</span> question:
+            <span class="kw">continue</span>
+
+        context = <span class="fn">retrieve</span>(question)
+        <span class="kw">if</span> context:
+            user_content = <span class="fn">f</span><span class="str">"Context:\n{context}\n\nQuestion: {question}"</span>
+        <span class="kw">else</span>:
+            user_content = question
+
+        messages.<span class="fn">append</span>({<span class="str">"role"</span>: <span class="str">"user"</span>, <span class="str">"content"</span>: user_content})
+        reply = <span class="fn">chat</span>(messages)
+        messages.<span class="fn">append</span>({<span class="str">"role"</span>: <span class="str">"assistant"</span>, <span class="str">"content"</span>: reply})
+
+        <span class="fn">print</span>(<span class="fn">f</span><span class="str">"Assistant: {reply}\n"</span>)
+
+
+<span class="kw">if</span> __name__ == <span class="str">"__main__"</span>:
+    <span class="fn">main</span>()</code></pre>
+  </div>
+
+  <h2>Step 3 — Run it</h2>
+
+  <pre><code>cd invoice-extractor
+source .venv/bin/activate
+python lesson_008/agent.py</code></pre>
+
+  <p>Try a multi-turn conversation: ask about an invoice, then ask a follow-up that only makes sense in context ("What currency?", "Is it paid?", "Who do I contact?").</p>
+
+  <h2>Python Nuggets</h2>
+
+  <div class="nugget">
+    <div class="label">Python Nugget — while True / break</div>
+    <p>The standard Python pattern for a REPL loop — run forever until an explicit exit condition:</p>
+    <pre><code><span class="kw">while True</span>:
+    line = <span class="fn">input</span>(<span class="str">"&gt; "</span>)
+    <span class="kw">if</span> line == <span class="str">"quit"</span>:
+        <span class="kw">break</span>          <span class="cm"># exits the while loop</span>
+    <span class="kw">if not</span> line:
+        <span class="kw">continue</span>       <span class="cm"># skips the rest of the loop body, goes back to top</span>
+    <span class="fn">process</span>(line)</code></pre>
+    <p style="margin:0"><code>break</code> exits the nearest enclosing loop. <code>continue</code> skips to the next iteration. Both work in <code>for</code> loops too.</p>
+  </div>
+
+  <div class="nugget">
+    <div class="label">Python Nugget — KeyboardInterrupt</div>
+    <p>When a user presses Ctrl+C, Python raises <code>KeyboardInterrupt</code>. Without a handler, it prints a stack trace. Catch it to exit cleanly:</p>
+    <pre><code><span class="kw">try</span>:
+    question = <span class="fn">input</span>(<span class="str">"You: "</span>)
+<span class="kw">except</span> <span class="cls">KeyboardInterrupt</span>:
+    <span class="fn">print</span>(<span class="str">"\nGoodbye."</span>)   <span class="cm"># \n because Ctrl+C leaves cursor mid-line</span>
+    <span class="kw">break</span></code></pre>
+    <p style="margin:0"><code>KeyboardInterrupt</code> inherits from <code>BaseException</code>, not <code>Exception</code> — a bare <code>except Exception</code> won't catch it. You have to name it explicitly.</p>
+  </div>
+
+  <div class="nugget">
+    <div class="label">Python Nugget — str methods</div>
+    <p>A few string methods used in this lesson:</p>
+    <pre><code><span class="str">"  hello  "</span>.<span class="fn">strip</span>()          <span class="cm"># → "hello"  (removes leading/trailing whitespace)</span>
+<span class="str">"QUIT"</span>.<span class="fn">lower</span>()               <span class="cm"># → "quit"   (lowercase)</span>
+<span class="str">"quit"</span> <span class="kw">in</span> (<span class="str">"quit"</span>, <span class="str">"exit"</span>)  <span class="cm"># → True    (membership test on a tuple)</span></code></pre>
+    <p style="margin:0">The <code>in</code> operator works on any iterable — list, tuple, set, string. Tuples are slightly faster than lists for membership tests on small collections of constants.</p>
+  </div>
+
+  <h2>The Context Window Trap</h2>
+
+  <div class="tip">
+    <strong>Watch out:</strong> the messages list grows by two entries every turn. After 50 turns of back-and-forth on long documents, you'll hit the model's context window limit and the call will fail. In production you'd need a strategy: summarise old turns, drop the oldest messages, or store long-term memory externally. For now, be aware the list is unbounded.
+  </div>
+
+  <h2>Challenges</h2>
+
+  <div class="challenge">
+    <div class="label">Challenge 1 — Show turn count</div>
+    <p>Print the current turn number and how many messages are in history before each prompt. e.g. <code>[turn 3 · 7 messages]</code>. This makes the growing context visible.</p>
+  </div>
+
+  <div class="challenge">
+    <div class="label">Challenge 2 — Show retrieved context</div>
+    <p>Add a <code>--debug</code> flag (check <code>sys.argv</code>) that, when present, prints the retrieved chunks before the assistant reply. Useful for diagnosing why the model gave a wrong answer.</p>
+  </div>
+
+  <div class="challenge">
+    <div class="label">Challenge 3 — Sliding window memory</div>
+    <p>Keep only the system prompt plus the last N turns (e.g. 6 messages = 3 turns). Trim the list before each call: <code>messages = [messages[0]] + messages[-6:]</code>. Test that follow-up questions still work within the window.</p>
+  </div>
+
+  <h2>Quiz</h2>
+
+  <div class="quiz">
+    <div class="quiz-q">1. You ask the agent "Is invoice 1002 overdue?", it answers correctly. Then you ask "What's the contact email?" and it says it doesn't know. What's the most likely cause?</div>
+    <div class="quiz-options">
+      <button class="quiz-option" onclick="answer(this, false, 'The model does have access to history — that\'s the point of the messages list. The issue is retrieval, not history.')">The model lost the conversation history.</button>
+      <button class="quiz-option" onclick="answer(this, true, 'Correct. The second question triggers a new RAG retrieval. If the email chunk scored above the distance threshold on the first query but the second query retrieves different chunks (or the email is in a different part of the document), the context won\'t contain it. The history gives the model conversational context, but not new facts.')">The RAG didn't retrieve the chunk containing the email for the follow-up question.</button>
+      <button class="quiz-option" onclick="answer(this, false, 'temperature=0 makes output deterministic — it doesn\'t affect what information the model has access to.')">temperature=0 is blocking the model from accessing new information.</button>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+  <div class="quiz" style="margin-top: 28px;">
+    <div class="quiz-q">2. Why do we store the full user message (including injected context) in history, rather than just the bare question?</div>
+    <div class="quiz-options">
+      <button class="quiz-option" onclick="answer(this, false, 'Context does take tokens, but that\'s a tradeoff we accept — not the reason to store it.')">To use more tokens and stay within the context window.</button>
+      <button class="quiz-option" onclick="answer(this, true, 'Correct. On a follow-up like "What currency was that in?", the model needs to be able to reference the invoice facts from the previous turn. If we only stored the bare question, those facts would be gone from history.')">So the model can reference the retrieved facts from prior turns when answering follow-ups.</button>
+      <button class="quiz-option" onclick="answer(this, false, 'The API doesn\'t enforce this — you can store whatever you want in the messages list.')">Because the API requires the full message to be stored.</button>
+    </div>
+    <div class="quiz-feedback"></div>
+  </div>
+
+  <h2>Ask Your Teacher</h2>
+  <ul>
+    <li><strong>"How do production agents handle memory when the context window fills up?"</strong></li>
+    <li><strong>"What's the difference between this and a proper agent framework like LangGraph?"</strong></li>
+    <li><strong>"When would I give the agent tools vs. just injecting context?"</strong></li>
+  </ul>
+  <p>Ask directly — the agent is your teacher.</p>
+
+  <footer>
+    Lesson 08 · AI Engineering · Open with: <code>open lessons/0008-stateful-agents.html</code>
+  </footer>
+
+</div>
+
+<script>
+function answer(btn, correct, explanation) {
+  const quiz = btn.closest('.quiz');
+  if (quiz.querySelector('.correct, .wrong')) return;
+  btn.classList.add(correct ? 'correct' : 'wrong');
+  if (!correct) quiz.querySelectorAll('.quiz-option').forEach(o => { if (o !== btn) o.disabled = true; });
+  const fb = quiz.querySelector('.quiz-feedback');
+  fb.innerHTML = explanation;
+  fb.classList.add('show');
+}
+</script>
+</body>
+</html>
